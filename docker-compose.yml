@@ -32,7 +32,6 @@ services:
       - "8080:8080"
     volumes:
       - uploads-data:/app/uploads
-
     depends_on:
       mysql:
         condition: service_healthy
@@ -53,11 +52,40 @@ services:
       - blogify-network
     restart: unless-stopped
 
-networks:
-  blogify-network:
-    driver: bridge
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - backend
+    networks:
+      - blogify-network
 
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"  # Using 3001 to avoid conflict with React dev server
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    depends_on:
+      - prometheus
+    networks:
+      - blogify-network
 volumes:
   mysql-data:
   uploads-data:
+  prometheus-data:
+  grafana-data:
 
+networks:
+  blogify-network:
+    driver: bridge

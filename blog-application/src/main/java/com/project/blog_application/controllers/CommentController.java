@@ -1,6 +1,7 @@
 package com.project.blog_application.controllers;
 
 import com.project.blog_application.DTO.CommentDTO;
+import com.project.blog_application.metrics.BlogMetrics;
 import com.project.blog_application.services.CommentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,8 +16,13 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "http://localhost:5173")
 public class CommentController {
 
-    @Autowired
-    private CommentService commentService;
+    private final CommentService commentService;
+    private final BlogMetrics blogMetrics;
+
+    public CommentController(CommentService commentService,BlogMetrics blogMetrics){
+        this.commentService = commentService;
+        this.blogMetrics = blogMetrics;
+    }
 
     // Create a comment
     @PostMapping
@@ -25,6 +31,7 @@ public class CommentController {
             @RequestParam Long blogPostId,
             @RequestBody String content) {
         try {
+            blogMetrics.incrementCommentCreated();
             CommentDTO comment = commentService.createComment(userId, blogPostId, content);
             return ResponseEntity.ok(comment);
         } catch (RuntimeException e) {
