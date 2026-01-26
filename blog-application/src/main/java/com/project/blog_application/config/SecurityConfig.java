@@ -58,8 +58,8 @@ public class SecurityConfig {
                                 "/api/posts/{id}",
                                 "/api/likes/status",
                                 "/api/comments",
-                                "api/likes/test",
-                                "api/likes/count/{id}",
+                                "/api/likes/test",
+                                "/api/likes/count/{id}",
                                 "/api/health",
                                 "/api/comments/{id}",
                                 "/api/comments/blog/{BlogPostId}",
@@ -77,7 +77,7 @@ public class SecurityConfig {
                                 "/api/comments/{id}/delete").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(
                                 "/api/users",
-                                "/api.admin/**",
+                                "/api/admin/**",
                                 "/api/users/count",
                                 "/api/posts/count",
                                 "/api/comments/count",

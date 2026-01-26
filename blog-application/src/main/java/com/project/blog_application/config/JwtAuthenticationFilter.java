@@ -36,42 +36,46 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
             @NonNull FilterChain chain) throws ServletException, IOException {
+        
         String method = request.getMethod();
         String uri = request.getRequestURI();
-        logger.info("Request: {} {}", method, uri);
+        logger.info("🔍 Request: {} {}", method, uri);
 
         String header = request.getHeader("Authorization");
-        logger.info("Header: {}", header);
+        logger.info("🔍 Authorization Header: {}", header);
 
         if (header != null && header.toLowerCase().startsWith("bearer ")) {
             String token = header.substring(7);
-            logger.info("Token: {}", token);
+            logger.info("🔍 Token extracted: {}...", token.substring(0, Math.min(20, token.length())));
+            
             try {
                 String email = jwtUtil.extractEmail(token);
-                logger.info("Email: {}", email);
+                logger.info("✅ Email extracted: {}", email);
+                
                 boolean valid = jwtUtil.validateToken(token, email);
-                logger.info("Token valid: {}", valid);
-                if (valid) {
+                logger.info("✅ Token valid: {}", valid);
+                
+                if (valid && email != null) {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                    logger.info("User: {}, Roles: {}", userDetails.getUsername(), userDetails.getAuthorities());
+                    logger.info("✅ User loaded: {}, Authorities: {}", userDetails.getUsername(), userDetails.getAuthorities());
+                    
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(auth);
-                    logger.info("Auth set for {} {}", method, uri);
+                    logger.info("✅ Authentication set successfully for {} {}", method, uri);
                 } else {
-                    logger.error("Invalid token for {} {}", method, uri);
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
-                    return;
+                    logger.warn("⚠️ Invalid token for {} {} - letting Spring Security handle it", method, uri);
+                    // ✅ DON'T send error - let Spring Security decide if endpoint needs auth
                 }
             } catch (Exception e) {
-                logger.error("Token error for {} {}: {}", method, uri, e.getMessage(), e);
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token error");
-                return;
+                logger.error("❌ Token processing error for {} {}: {}", method, uri, e.getMessage());
+                // ✅ DON'T send error - let Spring Security handle unauthorized access
             }
         } else {
-            logger.warn("No Bearer token for {} {}", method, uri);
+            logger.info("ℹ️ No Bearer token for {} {} - anonymous request", method, uri);
         }
 
+        // ✅ ALWAYS continue the filter chain - let Spring Security decide what to do
         chain.doFilter(request, response);
     }
 }
