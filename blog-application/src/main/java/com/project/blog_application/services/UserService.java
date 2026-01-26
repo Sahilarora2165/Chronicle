@@ -72,7 +72,8 @@ public class UserService {
 
         // Store the profile picture and set the file path
         if (profilePicture != null && !profilePicture.isEmpty()) {
-            String profilePicturePath = fileStorageService.storeFile(profilePicture);
+            String profilePicturePath = fileStorageService.store(profilePicture);
+
             user.setProfilePicture(profilePicturePath);
         }
 
@@ -216,7 +217,8 @@ public class UserService {
 
         // ✅ Handle profile picture upload
         if (profilePicture != null && !profilePicture.isEmpty()) {
-            String profilePicturePath = fileStorageService.storeFile(profilePicture);
+            String profilePicturePath = fileStorageService.store(profilePicture);
+
             existingUser.setProfilePicture(profilePicturePath);
         }
 

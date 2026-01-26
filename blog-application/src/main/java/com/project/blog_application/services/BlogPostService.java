@@ -8,17 +8,24 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import com.project.blog_application.services.FileStorageService;
 
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class BlogPostService {
-    private final BlogPostRepository blogPostRepository;    
+    private final BlogPostRepository blogPostRepository;
+    private final FileStorageService fileStorageService;
+
 
     @Autowired
-    public BlogPostService(BlogPostRepository blogPostRepository) {
+    public BlogPostService(
+            BlogPostRepository blogPostRepository,
+            FileStorageService fileStorageService
+    ) {
         this.blogPostRepository = blogPostRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     // Get all blog posts with pagination 
@@ -66,17 +73,32 @@ public class BlogPostService {
             existingPost.setContent(updatedPost.getContent());
         }
         if (updatedPost.getImageUrl() != null && !updatedPost.getImageUrl().isEmpty()) {
+
+            // delete old image if exists
+            if (existingPost.getImageUrl() != null && !existingPost.getImageUrl().isEmpty()) {
+                fileStorageService.delete(existingPost.getImageUrl());
+            }
+
+            // set new image filename
             existingPost.setImageUrl(updatedPost.getImageUrl());
         }
-        
+
+
         return blogPostRepository.save(existingPost);
     }
 
     // permanently delete a blog post
     public void deletePost(Long id) {
         BlogPost existingPost = getBlogPostById(id);
-        existingPost.getLikes().clear(); // Clear to avoid cascading issues
+
+        // delete associated image
+        if (existingPost.getImageUrl() != null && !existingPost.getImageUrl().isEmpty()) {
+            fileStorageService.delete(existingPost.getImageUrl());
+        }
+
+        existingPost.getLikes().clear();
         existingPost.getComments().clear();
         blogPostRepository.delete(existingPost);
     }
+
 }

@@ -1,15 +1,10 @@
 package com.project.blog_application.controllers;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -20,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.project.blog_application.services.FileStorageService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.blog_application.DTO.BlogPostDTO;
@@ -40,15 +36,19 @@ public class BlogPostController {
 
     private final BlogPostService blogPostService;
     private final UserRepository userRepository;
-
-    @Value("${file.upload-dir}")
-    private String uploadDir;
+    private final FileStorageService fileStorageService;
 
     @Autowired
-    public BlogPostController(BlogPostService blogPostService, UserRepository userRepository) {
+    public BlogPostController(
+            BlogPostService blogPostService,
+            UserRepository userRepository,
+            FileStorageService fileStorageService
+    ) {
         this.blogPostService = blogPostService;
         this.userRepository = userRepository;
+        this.fileStorageService = fileStorageService;
     }
+
 
     // Testing the endpoint
     @GetMapping("/test")
@@ -102,8 +102,9 @@ public class BlogPostController {
             blogPost.setUser(user.get());
 
             if (file != null && !file.isEmpty()) {
-                String imageUrl = handleFileUpload(file);
-                blogPost.setImageUrl(imageUrl);
+                String filename = fileStorageService.store(file);
+                blogPost.setImageUrl(filename);
+
             }
 
             BlogPost savedPost = blogPostService.createPost(blogPost, user.get());
@@ -122,22 +123,6 @@ public class BlogPostController {
     private BlogPost convertJsonToBlogPost(String blogPostJson) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.readValue(blogPostJson, BlogPost.class);
-    }
-
-    private String handleFileUpload(MultipartFile file) throws IOException {
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
-
-        String originalFilename = file.getOriginalFilename();
-        @SuppressWarnings("null")
-        String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        String uniqueFilename = System.currentTimeMillis() + "_" + UUID.randomUUID().toString() + extension;
-        Path filePath = uploadPath.resolve(uniqueFilename);
-
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-        return "/uploads/" + uniqueFilename;
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -167,21 +152,9 @@ public class BlogPostController {
 
             // Handle optional image update
             if (file != null && !file.isEmpty()) {
-                Path uploadPath = Paths.get(uploadDir);
-                if (!Files.exists(uploadPath)) {
-                    Files.createDirectories(uploadPath);
-                }
+                String filename = fileStorageService.store(file);
+                existingPost.setImageUrl(filename);
 
-                String originalFilename = file.getOriginalFilename();
-                @SuppressWarnings("null")
-                String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-                String uniqueFilename = System.currentTimeMillis() + "_" + UUID.randomUUID().toString() + extension;
-                Path filePath = uploadPath.resolve(uniqueFilename);
-
-                Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-                // Update the relative image URL
-                existingPost.setImageUrl("/uploads/" + uniqueFilename);
             }
 
             BlogPost savedPost = blogPostService.updatePost(id, existingPost);

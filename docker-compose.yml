@@ -31,7 +31,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./uploads:/app/uploads
+      - uploads-data:/app/uploads
+
     depends_on:
       mysql:
         condition: service_healthy
@@ -45,7 +46,7 @@ services:
       dockerfile: Dockerfile
     container_name: blogify-frontend
     ports:
-      - "5173:80"
+      - "80:80"
     depends_on:
       - backend
     networks:
@@ -58,3 +59,5 @@ networks:
 
 volumes:
   mysql-data:
+  uploads-data:
+

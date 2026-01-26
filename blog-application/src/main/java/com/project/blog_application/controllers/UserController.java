@@ -119,7 +119,8 @@ public class UserController {
 
         try {
             // Store the profile picture in the uploads folder
-            String profilePicturePath = fileStorageService.storeFile(profilePicture);
+            String profilePicturePath = fileStorageService.store(profilePicture);
+
 
             // Create a new User object
             User user = new User();
@@ -193,7 +194,8 @@ public class UserController {
         }
 
         if (profilePicture != null && !profilePicture.isEmpty()) {
-            String profilePicturePath = fileStorageService.storeFile(profilePicture);
+            String profilePicturePath = fileStorageService.store(profilePicture);
+
             targetUser.setProfilePicture(profilePicturePath);
         }
 
@@ -226,7 +228,8 @@ public class UserController {
 
         // ✅ Handle Profile Picture Upload
         if (profilePicture != null && !profilePicture.isEmpty()) {
-            String profilePicturePath = fileStorageService.storeFile(profilePicture);
+            String profilePicturePath = fileStorageService.store(profilePicture);
+
             user.setProfilePicture(profilePicturePath);
         }
 

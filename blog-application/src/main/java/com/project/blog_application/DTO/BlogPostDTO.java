@@ -20,7 +20,7 @@ public class BlogPostDTO {
         this.id = blogPost.getId();
         this.title = blogPost.getTitle();
         this.content = blogPost.getContent();
-        this.imageUrl = blogPost.getImageUrl();
+        this.imageUrl = buildPublicImageUrl(blogPost.getImageUrl());
         this.userId = blogPost.getUser().getId();
         this.username = blogPost.getUser().getUsername();
         this.email = blogPost.getUser().getEmail();
@@ -108,4 +108,19 @@ public class BlogPostDTO {
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
     }
+
+    private String buildPublicImageUrl(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        // If already a full path, return as-is (backward compatibility)
+        if (value.startsWith("/uploads/")) {
+            return value;
+        }
+
+        return "/uploads/" + value;
+    }
+
+
 }
