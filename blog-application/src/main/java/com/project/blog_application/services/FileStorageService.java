@@ -5,36 +5,88 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.nio.file.*;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
 public class FileStorageService {
 
-    private final Path rootLocation;
+    private final Path uploadRoot;
+    private final String publicBasePath;
 
-    public FileStorageService(@Value("${file.upload-dir}") String uploadDir) {
-        this.rootLocation = Paths.get(uploadDir);
+    public FileStorageService(
+            @Value("${file.upload-dir}") String uploadDir,
+            @Value("${file.public-base-path:/uploads}") String publicBasePath
+    ) {
+        this.uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
+        this.publicBasePath = publicBasePath;
+
         try {
-            Files.createDirectories(rootLocation);
+            Files.createDirectories(this.uploadRoot);
         } catch (IOException e) {
-            throw new RuntimeException("Could not initialize storage folder", e);
+            throw new IllegalStateException("Could not create upload directory", e);
         }
     }
 
-    public String storeFile(MultipartFile file) {
-        try {
-            if (file.isEmpty()) {
-                throw new RuntimeException("Failed to store empty file.");
-            }
-            String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-            Path destinationFile = this.rootLocation.resolve(Paths.get(fileName)).normalize().toAbsolutePath();
-            Files.copy(file.getInputStream(), destinationFile);
-            return fileName;
+    /**
+     * Stores a file and returns the stored filename (NOT URL)
+     */
+    public String store(MultipartFile file) {
+        validateFile(file);
+
+        String cleanFilename = generateSafeFilename(file.getOriginalFilename());
+        Path destination = uploadRoot.resolve(cleanFilename);
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, destination, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to store file.", e);
+            throw new RuntimeException("Failed to store file " + cleanFilename, e);
+        }
+
+        return cleanFilename;
+    }
+
+    /**
+     * Deletes a stored file safely
+     */
+    public void delete(String filename) {
+        if (filename == null || filename.isBlank()) return;
+
+        try {
+            Path filePath = uploadRoot.resolve(filename).normalize();
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            // Do NOT crash app for cleanup failure
+            System.err.println("Failed to delete file: " + filename);
         }
     }
+
+    /**
+     * Builds a public URL from filename
+     */
+    public String buildPublicUrl(String filename) {
+        if (filename == null) return null;
+        return publicBasePath + "/" + filename;
+    }
+
+    // ---------- helpers ----------
+
+    private void validateFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Cannot store empty file");
+        }
+    }
+
+    private String generateSafeFilename(String originalFilename) {
+        String ext = "";
+
+        if (originalFilename != null && originalFilename.contains(".")) {
+            ext = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
+
+        return UUID.randomUUID() + ext;
+    }
+
 }
