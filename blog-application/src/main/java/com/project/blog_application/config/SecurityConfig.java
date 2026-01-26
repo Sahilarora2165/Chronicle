@@ -62,6 +62,7 @@ public class SecurityConfig {
                                 "/api/likes/count/{id}",
                                 "/api/health",
                                 "/api/comments/{id}",
+                                "/actuator/**",
                                 "/api/comments/blog/{BlogPostId}",
                                 "/uploads/**").permitAll()
                         .requestMatchers(

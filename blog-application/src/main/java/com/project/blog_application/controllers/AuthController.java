@@ -4,6 +4,7 @@ import com.project.blog_application.DTO.LoginRequest;
 import com.project.blog_application.DTO.LoginResponse;
 import com.project.blog_application.entities.User;
 import com.project.blog_application.exceptions.InvalidCredentialsException;
+import com.project.blog_application.metrics.BlogMetrics;
 import com.project.blog_application.services.AuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +26,12 @@ public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
+    private final BlogMetrics blogMetrics;
 
     // Constructor injection
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, BlogMetrics blogMetrics) {
         this.authService = authService;
+        this.blogMetrics = blogMetrics;
     }
 
     @PostMapping("/signup")
@@ -36,7 +39,9 @@ public class AuthController {
         logger.info("Signup request received for email: {}", user.getEmail());
         Map<String, String> response = new HashMap<>();
         try {
+
             response = authService.register(user);
+            blogMetrics.incrementUserRegistered();
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             logger.error("Signup failed: {}", e.getMessage());

@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import java.util.Optional;
 
+import com.project.blog_application.metrics.BlogMetrics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,24 +38,21 @@ public class BlogPostController {
     private final BlogPostService blogPostService;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final BlogMetrics blogMetrics;
 
     @Autowired
     public BlogPostController(
             BlogPostService blogPostService,
             UserRepository userRepository,
-            FileStorageService fileStorageService
+            FileStorageService fileStorageService,
+            BlogMetrics blogMetrics
     ) {
         this.blogPostService = blogPostService;
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
+        this.blogMetrics = blogMetrics;
     }
 
-
-    // Testing the endpoint
-    @GetMapping("/test")
-    public String test() {
-        return "Hello from BlogPostController";
-    }
 
     // Endpoint to get all the blog posts
     @GetMapping
@@ -106,8 +104,9 @@ public class BlogPostController {
                 blogPost.setImageUrl(filename);
 
             }
-
             BlogPost savedPost = blogPostService.createPost(blogPost, user.get());
+            logger.info("Blog post created, incrementing metric");
+            blogMetrics.incrementPostCreated();
             BlogPostDTO response = new BlogPostDTO(savedPost);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IOException e) {
