@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mysql:
     image: mysql:8.0
@@ -18,6 +16,19 @@ services:
       timeout: 20s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    networks:
+      - blogify-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./blog-application
@@ -28,6 +39,8 @@ services:
       - DB_URL=${DB_URL:-jdbc:mysql://mysql:3306/blog_db}
       - DB_USERNAME=${DB_USERNAME:-root}
       - DB_PASSWORD=${DB_PASSWORD:-sahil1175}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     ports:
       - "8080:8080"
     volumes:
@@ -35,6 +48,9 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
     networks:
       - blogify-network
     restart: unless-stopped
@@ -82,6 +98,7 @@ services:
       - blogify-network
 volumes:
   mysql-data:
+  redis-data:
   uploads-data:
   prometheus-data:
   grafana-data:
