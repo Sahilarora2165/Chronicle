@@ -3,9 +3,13 @@ package com.project.blog_application.DTO;
 import com.project.blog_application.entities.Role;
 import com.project.blog_application.entities.User;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public class UserDTO {
+public class UserDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     private Long id;
     private String username;
     private String email;

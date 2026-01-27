@@ -1,9 +1,9 @@
 package com.project.blog_application.controllers;
 
 import java.io.IOException;
-
 import java.util.Optional;
 
+import com.project.blog_application.DTO.PageResponse;
 import com.project.blog_application.metrics.BlogMetrics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -53,34 +53,35 @@ public class BlogPostController {
         this.blogMetrics = blogMetrics;
     }
 
-
-    // Endpoint to get all the blog posts
+    // Now uses cached DTO method directly
     @GetMapping
-    public ResponseEntity<Page<BlogPostDTO>> getAllPosts(
+    public ResponseEntity<PageResponse<BlogPostDTO>> getAllPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
-        Page<BlogPost> blogPosts = blogPostService
-                .getAllBlogPosts(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
 
-        // Convert Page<BlogPost> to Page<BlogPostDTO>
-        Page<BlogPostDTO> blogPostDTOs = blogPosts.map(BlogPostDTO::new);
+        logger.info("📥 GET /api/posts - page: {}, size: {}", page, size);
+
+        PageResponse<BlogPostDTO> blogPostDTOs = blogPostService.getAllBlogPostsDTO(
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
 
         return ResponseEntity.ok(blogPostDTOs);
     }
 
-    // Endpoint to get a blog post by id
+    // Now uses cached DTO method directly
     @GetMapping("/{id}")
     public ResponseEntity<BlogPostDTO> getPostById(@PathVariable Long id) {
         try {
-            BlogPost post = blogPostService.getBlogPostById(id);
-            BlogPostDTO response = new BlogPostDTO(post);
+            logger.info("📥 GET /api/posts/{} - fetching post", id);
+            //  This method returns cached DTO
+            BlogPostDTO response = blogPostService.getBlogPostDTOById(id);
+
             return ResponseEntity.ok(response);
         } catch (ResourceNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         }
     }
 
-    // Create blog post with optional image upload
     @PostMapping(consumes = "multipart/form-data", produces = "application/json")
     public ResponseEntity<BlogPostDTO> createPost(
             @RequestPart("blogPost") String blogPostJson,
@@ -102,11 +103,14 @@ public class BlogPostController {
             if (file != null && !file.isEmpty()) {
                 String filename = fileStorageService.store(file);
                 blogPost.setImageUrl(filename);
-
             }
+
+            // ✅ This clears caches automatically
             BlogPost savedPost = blogPostService.createPost(blogPost, user.get());
-            logger.info("Blog post created, incrementing metric");
+
+            logger.info("✅ Blog post created, incrementing metric");
             blogMetrics.incrementPostCreated();
+
             BlogPostDTO response = new BlogPostDTO(savedPost);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IOException e) {
@@ -153,10 +157,11 @@ public class BlogPostController {
             if (file != null && !file.isEmpty()) {
                 String filename = fileStorageService.store(file);
                 existingPost.setImageUrl(filename);
-
             }
 
+            // This clears caches automatically
             BlogPost savedPost = blogPostService.updatePost(id, existingPost);
+
             BlogPostDTO response = new BlogPostDTO(savedPost);
             return ResponseEntity.ok(response);
 
@@ -165,12 +170,13 @@ public class BlogPostController {
         }
     }
 
-    // Only **authenticated users** can delete a post
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deletePost(@PathVariable Long id) {
         try {
+            // This clears caches automatically
             blogPostService.deletePost(id);
+
             return ResponseEntity.ok("Post deleted");
         } catch (Exception e) {
             logger.error("Failed to delete post {}: {}", id, e.getMessage(), e);

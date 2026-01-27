@@ -50,20 +50,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
-                                "/api/auth/signup",
-                                "/api/auth/login",
+                                "/api/auth/**",
                                 "/api/users/login",
                                 "/api/users/register",
                                 "/api/posts",
-                                "/api/posts/{id}",
+                                "/api/posts/*",
                                 "/api/likes/status",
-                                "/api/comments",
                                 "/api/likes/test",
-                                "/api/likes/count/{id}",
+                                "/api/likes/count/*",
+                                "/api/comments",
+                                "/api/comments/*",
+                                "/api/comments/blog/*",
                                 "/api/health",
-                                "/api/comments/{id}",
                                 "/actuator/**",
-                                "/api/comments/blog/{BlogPostId}",
                                 "/uploads/**").permitAll()
                         .requestMatchers(
                                 "/api/posts/upload",

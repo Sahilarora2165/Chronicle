@@ -1,5 +1,8 @@
 package com.project.blog_application.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -17,18 +20,28 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-@EnableCaching
+//@EnableCaching
 public class RedisConfig {
+
+    @Bean
+    public ObjectMapper redisObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
+    }
 
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
+        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper());
+
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setValueSerializer(serializer);
+        template.setHashValueSerializer(serializer);
 
         template.afterPropertiesSet();
         return template;
@@ -36,21 +49,18 @@ public class RedisConfig {
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-        // Default configuration - 10 minutes TTL
+        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper());
+
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(10))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
                 .disableCachingNullValues();
 
-        // Custom TTL for specific caches
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
 
-        // Individual posts - cache longer (30 minutes)
         cacheConfigurations.put("blogPost", defaultConfig.entryTtl(Duration.ofMinutes(30)));
-
-        // Lists and searches - shorter cache (5 minutes, changes more frequently)
-        cacheConfigurations.put("blogPosts", defaultConfig.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put("blogPostsPage", defaultConfig.entryTtl(Duration.ofMinutes(5)));
         cacheConfigurations.put("blogPostsByUser", defaultConfig.entryTtl(Duration.ofMinutes(5)));
         cacheConfigurations.put("blogPostsByTitle", defaultConfig.entryTtl(Duration.ofMinutes(5)));
         cacheConfigurations.put("blogPostsByKeyword", defaultConfig.entryTtl(Duration.ofMinutes(5)));
