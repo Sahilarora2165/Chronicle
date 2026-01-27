@@ -56,17 +56,20 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./blog-frontend
-      dockerfile: Dockerfile
+    image: node:20-alpine
     container_name: blogify-frontend
+    working_dir: /app
+    volumes:
+      - ./blog-frontend:/app
+      - /app/node_modules
     ports:
-      - "80:80"
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev"
     depends_on:
       - backend
     networks:
       - blogify-network
-    restart: unless-stopped
+
 
   prometheus:
     image: prom/prometheus:latest

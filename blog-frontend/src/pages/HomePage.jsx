@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import api from "../axios";
-import HomeHeader from "../components/HomeHeader"; // Make sure this imports the NEW Header
+import HomeHeader from "../components/HomeHeader";
 import Footer from "../components/Footer";
 
 const HomePage = () => {
@@ -97,16 +97,12 @@ const HomePage = () => {
     <div className="flex flex-col min-h-screen bg-white text-gray-900 font-sans selection:bg-black selection:text-white">
       <HomeHeader onSearch={setSearchQuery} />
 
-      {/*
-         FIX FOR OVERLAP:
-         Added 'pt-32' (padding top) to this main container.
-         Since your Header is fixed with height 'h-20' (80px) + some border/padding,
-         pt-32 (128px) gives it plenty of breathing room.
-      */}
-      <main className="flex-grow max-w-[1600px] mx-auto w-full px-4 sm:px-8 lg:px-12 pt-32 pb-20">
+      {/* Main Content Wrapper */}
+      <main className="flex-grow max-w-[1600px] mx-auto w-full px-4 sm:px-8 lg:px-12 pb-20">
 
         {/* Hero Section */}
-        <div className="mb-16 text-center max-w-3xl mx-auto">
+        {/* Added mt-32 here to give space for the Floating Header */}
+        <div className="mt-32 mb-20 text-center max-w-3xl mx-auto">
           <h1 className="text-4xl md:text-6xl font-serif font-medium tracking-tight mb-4 text-gray-900">
             Stories & Ideas
           </h1>
@@ -131,7 +127,7 @@ const HomePage = () => {
                 to={`/posts/${post.id}`}
                 className="group flex flex-col h-full"
               >
-                <article className="flex flex-col h-full border border-gray-100 rounded-2xl overflow-hidden bg-white hover:shadow-lg hover:shadow-gray-200/50 hover:border-gray-200 transition-all duration-500 ease-out">
+                <article className="flex flex-col h-full border border-gray-100 rounded-2xl overflow-hidden bg-white hover:shadow-xl hover:shadow-gray-200/50 hover:border-gray-200 transition-all duration-500 ease-out">
 
                   {/* Image Section */}
                   <div className="relative w-full aspect-[4/3] bg-gray-50 overflow-hidden">
