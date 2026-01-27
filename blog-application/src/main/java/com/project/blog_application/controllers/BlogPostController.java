@@ -53,32 +53,42 @@ public class BlogPostController {
         this.blogMetrics = blogMetrics;
     }
 
-    // Now uses cached DTO method directly
+    // ✅ Returns cached JSON string directly
     @GetMapping
-    public ResponseEntity<PageResponse<BlogPostDTO>> getAllPosts(
+    public ResponseEntity<String> getAllPosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "100") int size) {
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            logger.info("📄 GET /api/posts - page: {}, size: {}", page, size);
 
-        logger.info("📥 GET /api/posts - page: {}, size: {}", page, size);
+            String json = blogPostService.getAllBlogPostsJson(
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+            );
 
-        PageResponse<BlogPostDTO> blogPostDTOs = blogPostService.getAllBlogPostsDTO(
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
-        );
-
-        return ResponseEntity.ok(blogPostDTOs);
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/json")
+                    .body(json);
+        } catch (Exception e) {
+            logger.error("❌ Error fetching posts: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"error\":\"Failed to fetch posts\"}");
+        }
     }
 
-    // Now uses cached DTO method directly
+    // ✅ Returns deserialized DTO from cached JSON
     @GetMapping("/{id}")
     public ResponseEntity<BlogPostDTO> getPostById(@PathVariable Long id) {
         try {
-            logger.info("📥 GET /api/posts/{} - fetching post", id);
-            //  This method returns cached DTO
-            BlogPostDTO response = blogPostService.getBlogPostDTOById(id);
+            logger.info("📄 GET /api/posts/{} - fetching post", id);
 
+            BlogPostDTO response = blogPostService.getBlogPostDTOById(id);
             return ResponseEntity.ok(response);
         } catch (ResourceNotFoundException e) {
+            logger.warn("⚠️ Post {} not found", id);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        } catch (Exception e) {
+            logger.error("❌ Error fetching post {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 
@@ -105,7 +115,7 @@ public class BlogPostController {
                 blogPost.setImageUrl(filename);
             }
 
-            // ✅ This clears caches automatically
+            // This clears caches automatically
             BlogPost savedPost = blogPostService.createPost(blogPost, user.get());
 
             logger.info("✅ Blog post created, incrementing metric");
@@ -114,7 +124,7 @@ public class BlogPostController {
             BlogPostDTO response = new BlogPostDTO(savedPost);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IOException e) {
-            logger.error("IOException occurred while creating the post", e);
+            logger.error("❌ IOException occurred while creating the post", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
@@ -166,6 +176,7 @@ public class BlogPostController {
             return ResponseEntity.ok(response);
 
         } catch (IOException e) {
+            logger.error("❌ Error updating post {}: {}", id, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
@@ -179,8 +190,9 @@ public class BlogPostController {
 
             return ResponseEntity.ok("Post deleted");
         } catch (Exception e) {
-            logger.error("Failed to delete post {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Delete failed: " + e.getMessage());
+            logger.error("❌ Failed to delete post {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Delete failed: " + e.getMessage());
         }
     }
 }

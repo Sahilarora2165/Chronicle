@@ -20,9 +20,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-//@EnableCaching
+@EnableCaching
 public class RedisConfig {
 
+    // ✅ Simple ObjectMapper for date handling (no type metadata needed)
     @Bean
     public ObjectMapper redisObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
@@ -49,25 +50,55 @@ public class RedisConfig {
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper());
 
-        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(10))
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
-                .disableCachingNullValues();
+        // ✅ Use StringRedisSerializer for both keys AND values (since we're caching JSON strings)
+        RedisCacheConfiguration defaultConfig =
+                RedisCacheConfiguration.defaultCacheConfig()
+                        .entryTtl(Duration.ofMinutes(10))
+                        .serializeKeysWith(
+                                RedisSerializationContext.SerializationPair
+                                        .fromSerializer(new StringRedisSerializer())
+                        )
+                        .serializeValuesWith(
+                                RedisSerializationContext.SerializationPair
+                                        .fromSerializer(new StringRedisSerializer())  // ✅ Changed to String
+                        )
+                        .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
 
-        cacheConfigurations.put("blogPost", defaultConfig.entryTtl(Duration.ofMinutes(30)));
-        cacheConfigurations.put("blogPostsPage", defaultConfig.entryTtl(Duration.ofMinutes(5)));
-        cacheConfigurations.put("blogPostsByUser", defaultConfig.entryTtl(Duration.ofMinutes(5)));
-        cacheConfigurations.put("blogPostsByTitle", defaultConfig.entryTtl(Duration.ofMinutes(5)));
-        cacheConfigurations.put("blogPostsByKeyword", defaultConfig.entryTtl(Duration.ofMinutes(5)));
+        // ✅ Individual post cache - 30 minutes
+        cacheConfigurations.put(
+                "blogPost",
+                defaultConfig.entryTtl(Duration.ofMinutes(30))
+        );
+
+        // ✅ Paginated list cache - 5 minutes
+        cacheConfigurations.put(
+                "blogPostsPageJson",
+                defaultConfig.entryTtl(Duration.ofMinutes(5))
+        );
+
+        // ✅ Other search caches - 5 minutes
+        cacheConfigurations.put(
+                "blogPostsByUser",
+                defaultConfig.entryTtl(Duration.ofMinutes(5))
+        );
+
+        cacheConfigurations.put(
+                "blogPostsByTitle",
+                defaultConfig.entryTtl(Duration.ofMinutes(5))
+        );
+
+        cacheConfigurations.put(
+                "blogPostsByKeyword",
+                defaultConfig.entryTtl(Duration.ofMinutes(5))
+        );
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigurations)
                 .build();
     }
+
 }
