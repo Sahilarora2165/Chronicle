@@ -1,9 +1,14 @@
 package com.project.blog_application.DTO;
 
 import com.project.blog_application.entities.BlogPost;
+
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public class BlogPostDTO {
+public class BlogPostDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     private Long id;
     private String title;
     private String content;
@@ -15,8 +20,12 @@ public class BlogPostDTO {
     private LocalDateTime updatedAt;
     private boolean deleted;
 
+    public BlogPostDTO() {
+    }
+
+
     // Constructor to map BlogPost to BlogPostDTO
-    public BlogPostDTO(BlogPost blogPost) {
+    public BlogPostDTO(BlogPost blogPost)  {
         this.id = blogPost.getId();
         this.title = blogPost.getTitle();
         this.content = blogPost.getContent();

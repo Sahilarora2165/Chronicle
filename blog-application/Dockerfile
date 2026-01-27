@@ -1,17 +1,23 @@
-FROM maven:3.8.3-openjdk-17 AS build
+# -------- Build stage --------
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /app
+
+# 1. Copy only pom.xml first (dependency layer)
 COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# 2. Now copy source code
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-FROM openjdk:17.0.1-jdk-slim
+# -------- Runtime stage --------
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 
-# This is the heart of multi-stage builds: you build in a big image and copy just the artifact into a small runtime image.
-COPY --from=build /app/target/blog-application-0.0.1-SNAPSHOT.jar demo.jar
+COPY --from=builder /app/target/*SNAPSHOT.jar app.jar
 
-# Create uploads directory with proper permissions
+# Create uploads directory
 RUN mkdir -p /app/uploads && chmod 755 /app/uploads
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "demo.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

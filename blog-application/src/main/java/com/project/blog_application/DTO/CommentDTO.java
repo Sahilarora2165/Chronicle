@@ -1,10 +1,14 @@
 package com.project.blog_application.DTO;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 import com.project.blog_application.entities.Comment;
 
-public class CommentDTO {
+public class CommentDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     private Long id;
     private String content;
     private Long userId;

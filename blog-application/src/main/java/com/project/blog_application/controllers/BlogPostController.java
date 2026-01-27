@@ -1,9 +1,9 @@
 package com.project.blog_application.controllers;
 
 import java.io.IOException;
-
 import java.util.Optional;
 
+import com.project.blog_application.DTO.PageResponse;
 import com.project.blog_application.metrics.BlogMetrics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -53,34 +53,45 @@ public class BlogPostController {
         this.blogMetrics = blogMetrics;
     }
 
-
-    // Endpoint to get all the blog posts
+    // ✅ Returns cached JSON string directly
     @GetMapping
-    public ResponseEntity<Page<BlogPostDTO>> getAllPosts(
+    public ResponseEntity<String> getAllPosts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "100") int size) {
-        Page<BlogPost> blogPosts = blogPostService
-                .getAllBlogPosts(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
-
-        // Convert Page<BlogPost> to Page<BlogPostDTO>
-        Page<BlogPostDTO> blogPostDTOs = blogPosts.map(BlogPostDTO::new);
-
-        return ResponseEntity.ok(blogPostDTOs);
-    }
-
-    // Endpoint to get a blog post by id
-    @GetMapping("/{id}")
-    public ResponseEntity<BlogPostDTO> getPostById(@PathVariable Long id) {
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            BlogPost post = blogPostService.getBlogPostById(id);
-            BlogPostDTO response = new BlogPostDTO(post);
-            return ResponseEntity.ok(response);
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            logger.info("📄 GET /api/posts - page: {}, size: {}", page, size);
+
+            String json = blogPostService.getAllBlogPostsJson(
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))
+            );
+
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/json")
+                    .body(json);
+        } catch (Exception e) {
+            logger.error("❌ Error fetching posts: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("{\"error\":\"Failed to fetch posts\"}");
         }
     }
 
-    // Create blog post with optional image upload
+    // ✅ Returns deserialized DTO from cached JSON
+    @GetMapping("/{id}")
+    public ResponseEntity<BlogPostDTO> getPostById(@PathVariable Long id) {
+        try {
+            logger.info("📄 GET /api/posts/{} - fetching post", id);
+
+            BlogPostDTO response = blogPostService.getBlogPostDTOById(id);
+            return ResponseEntity.ok(response);
+        } catch (ResourceNotFoundException e) {
+            logger.warn("⚠️ Post {} not found", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        } catch (Exception e) {
+            logger.error("❌ Error fetching post {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
     @PostMapping(consumes = "multipart/form-data", produces = "application/json")
     public ResponseEntity<BlogPostDTO> createPost(
             @RequestPart("blogPost") String blogPostJson,
@@ -102,15 +113,18 @@ public class BlogPostController {
             if (file != null && !file.isEmpty()) {
                 String filename = fileStorageService.store(file);
                 blogPost.setImageUrl(filename);
-
             }
+
+            // This clears caches automatically
             BlogPost savedPost = blogPostService.createPost(blogPost, user.get());
-            logger.info("Blog post created, incrementing metric");
+
+            logger.info("✅ Blog post created, incrementing metric");
             blogMetrics.incrementPostCreated();
+
             BlogPostDTO response = new BlogPostDTO(savedPost);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IOException e) {
-            logger.error("IOException occurred while creating the post", e);
+            logger.error("❌ IOException occurred while creating the post", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
@@ -153,28 +167,32 @@ public class BlogPostController {
             if (file != null && !file.isEmpty()) {
                 String filename = fileStorageService.store(file);
                 existingPost.setImageUrl(filename);
-
             }
 
+            // This clears caches automatically
             BlogPost savedPost = blogPostService.updatePost(id, existingPost);
+
             BlogPostDTO response = new BlogPostDTO(savedPost);
             return ResponseEntity.ok(response);
 
         } catch (IOException e) {
+            logger.error("❌ Error updating post {}: {}", id, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 
-    // Only **authenticated users** can delete a post
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deletePost(@PathVariable Long id) {
         try {
+            // This clears caches automatically
             blogPostService.deletePost(id);
+
             return ResponseEntity.ok("Post deleted");
         } catch (Exception e) {
-            logger.error("Failed to delete post {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Delete failed: " + e.getMessage());
+            logger.error("❌ Failed to delete post {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Delete failed: " + e.getMessage());
         }
     }
 }

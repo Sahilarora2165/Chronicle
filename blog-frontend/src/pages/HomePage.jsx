@@ -1,137 +1,210 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import api from "../axios";
 import HomeHeader from "../components/HomeHeader";
-import Footer from "../components/Footer"; // Import the Footer component
+import Footer from "../components/Footer";
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [error, setError] = useState("");
+
+  const isFetching = useRef(false);
+
+  const fetchPosts = async (pageNum, isReset = false) => {
+    if (isFetching.current || (!hasMore && !isReset)) return;
+
+    isFetching.current = true;
+    if (pageNum === 0) setLoading(true);
+
+    try {
+      const response = await api.get(`/posts?page=${pageNum}`);
+      let fetchedPosts = response.data;
+
+      if (typeof response.data === 'string') {
+        fetchedPosts = JSON.parse(response.data);
+      }
+
+      const contentArray = Array.isArray(fetchedPosts) ? fetchedPosts : (fetchedPosts.content || []);
+
+      if (contentArray.length === 0) {
+        setHasMore(false);
+      } else {
+        const postsWithRandomHeight = contentArray.map(post => ({
+          ...post,
+          cardHeight: 420,
+        }));
+
+        if (isReset) {
+          setPosts(postsWithRandomHeight);
+          setPage(0);
+          setHasMore(true);
+        } else {
+          setPosts(prev => [...prev, ...postsWithRandomHeight]);
+        }
+      }
+      setError("");
+    } catch (err) {
+      console.error("Error fetching posts:", err);
+      setError("Failed to load posts. Please try again later.");
+    } finally {
+      setLoading(false);
+      isFetching.current = false;
+    }
+  };
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      setLoading(true);
-      try {
-        const response = await api.get("/posts");
-        const fetchedPosts = response.data.content || response.data;
-        // Add random height to each post for dynamic sizing
-        const postsWithRandomHeight = fetchedPosts.map(post => ({
-          ...post,
-          cardHeight: Math.floor(Math.random() * (400 - 300 + 1)) + 300, // Random height between 300px and 400px
-        }));
-        setPosts(postsWithRandomHeight);
-        setError("");
-      } catch (err) {
-        setError("Failed to load posts. Please try again later.");
-        console.error("Error fetching posts:", err);
-      } finally {
-        setLoading(false);
+    fetchPosts(0);
+  }, []);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim() === "") {
+        setPage(0);
+        setHasMore(true);
+        fetchPosts(0, true);
+      }
+    }, 500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + document.documentElement.scrollTop + 200 >=
+        document.documentElement.offsetHeight
+      ) {
+        if (searchQuery === "" && hasMore && !isFetching.current) {
+          const nextPage = page + 1;
+          setPage(nextPage);
+          fetchPosts(nextPage);
+        }
       }
     };
-    fetchPosts();
-  }, []);
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [page, hasMore, searchQuery]);
 
   const filteredPosts = posts.filter(post =>
     post.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-gray-50">
-        <div className="text-center">
-          <h1 className="text-5xl font-playfair font-light text-gray-900 mb-4 tracking-wider animate-pulse">
-            Blogify
-          </h1>
-          <p className="text-lg font-cormorant text-gray-500">Loading your stories...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-gray-50">
-        <p className="text-gray-700 font-cormorant text-lg text-center bg-gray-100 p-4 rounded-xl shadow-md border border-gray-200">
-          {error}
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <div className="flex flex-col min-h-screen bg-white text-gray-900 font-sans selection:bg-black selection:text-white">
       <HomeHeader onSearch={setSearchQuery} />
-      
-      {/* Main content should expand to push the footer down */}
-      <div className="flex-grow max-w-7xl mx-auto pt-20">
-        {/* Pinterest-like grid layout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 auto-rows-min">
-          {filteredPosts.map(post => (
-            <Link
-              key={post.id}
-              to={`/posts/${post.id}`}
-              className="block bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-gray-200 overflow-hidden group relative"
-              style={{ minHeight: `${post.cardHeight}px` }}
-            >
-              {/* Image Section */}
-              {post.imageUrl ? (
-                <div className="relative w-full h-64 mb-5 overflow-hidden">
-                  <img
-                    src={post.imageUrl}
-                    alt={post.title}
-                    loading="lazy"
-                    className="w-full h-full object-cover rounded-xl transition-transform duration-300 group-hover:scale-105"
-                    onError={(e) => {
-                      e.target.src = "https://via.placeholder.com/300x200?text=No+Image";
-                      console.error("Image failed to load:", post.imageUrl);
-                    }}
-                  />
-                  {/* Overlay on Hover */}
-                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl" />
-                </div>
-              ) : (
-                <div className="relative w-full h-64 mb-5 flex items-center justify-center bg-gray-100 rounded-xl">
-                  <span className="text-gray-400 font-cormorant text-sm">No Image Available</span>
-                </div>
-              )}
-  
-              {/* Content Section */}
-              <div className="p-6">
-                <p className="text-sm font-cormorant font-medium text-gray-600 mb-2">
-                  By {post.username || post.author || "Unknown Author"}
-                </p>
-                <h2 className="text-xl font-playfair font-semibold text-gray-900 mb-3 line-clamp-2">
-                  {post.title}
-                </h2>
-                <p className="text-gray-700 font-cormorant text-base line-clamp-3 leading-relaxed">
-                  {post.content}
-                </p>
-                <p className="text-gray-500 font-cormorant text-xs mt-3">
-                  {new Date(post.createdAt).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-  
-              {/* Hover Effect: Read More Button */}
-              <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <button className="w-full bg-white text-black text-sm font-medium px-4 py-2 rounded-full hover:bg-gray-100 transition-all duration-300 shadow-md">
-                  Read More
-                </button>
-              </div>
-            </Link>
-          ))}
+
+      {/* Main Content Wrapper */}
+      <main className="flex-grow max-w-[1600px] mx-auto w-full px-4 sm:px-8 lg:px-12 pb-20">
+
+        {/* Hero Section */}
+        {/* Added mt-32 here to give space for the Floating Header */}
+        <div className="mt-32 mb-20 text-center max-w-3xl mx-auto">
+          <h1 className="text-4xl md:text-6xl font-serif font-medium tracking-tight mb-4 text-gray-900">
+            Stories & Ideas
+          </h1>
+          <p className="text-lg md:text-xl text-gray-500 font-light leading-relaxed">
+            A collection of thoughts, design, and technology.
+          </p>
         </div>
-      </div>
-  
-      {/* Footer at the bottom */}
+
+        {loading && posts.length === 0 ? (
+          <div className="flex justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        ) : error && posts.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">
+            {error}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+            {filteredPosts.map((post) => (
+              <Link
+                key={post.id}
+                to={`/posts/${post.id}`}
+                className="group flex flex-col h-full"
+              >
+                <article className="flex flex-col h-full border border-gray-100 rounded-2xl overflow-hidden bg-white hover:shadow-xl hover:shadow-gray-200/50 hover:border-gray-200 transition-all duration-500 ease-out">
+
+                  {/* Image Section */}
+                  <div className="relative w-full aspect-[4/3] bg-gray-50 overflow-hidden">
+                    <img
+                      src={post.imageUrl || "https://images.unsplash.com/photo-1499750310159-5b9f4b9cf29d?q=80&w=1000&auto=format&fit=crop"}
+                      alt={post.title}
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500" />
+                  </div>
+
+                  {/* Content Section */}
+                  <div className="p-6 flex flex-col flex-grow">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
+                        {(post.username || post.author || "A").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                          {post.username || post.author || "Unknown Author"}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {new Date(post.createdAt).toLocaleDateString("en-US", {
+                            month: "short", day: "numeric"
+                          })}
+                        </span>
+                      </div>
+                    </div>
+
+                    <h2 className="text-xl font-serif font-semibold text-gray-900 leading-tight mb-3 group-hover:underline decoration-1 underline-offset-4 decoration-gray-300">
+                      {post.title}
+                    </h2>
+
+                    <p className="text-gray-500 font-light text-sm leading-relaxed line-clamp-3 mb-4 flex-grow">
+                      {post.content}
+                    </p>
+
+                    <div className="pt-4 border-t border-gray-50 mt-auto flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0">
+                      <span className="text-xs font-semibold text-gray-900">Read article</span>
+                      <svg className="w-4 h-4 text-gray-900 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                      </svg>
+                    </div>
+                  </div>
+                </article>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* Infinite Scroll Loader */}
+        {!loading && hasMore && searchQuery === "" && (
+          <div className="py-12 text-center">
+            <div className="inline-flex items-center space-x-2 text-gray-400 text-sm">
+              <span>Load more stories</span>
+              <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+              </svg>
+            </div>
+          </div>
+        )}
+
+        {isFetching.current && posts.length > 0 && (
+           <div className="py-12 text-center">
+             <div className="inline-flex items-center space-x-2">
+               <div className="w-2 h-2 bg-gray-900 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+               <div className="w-2 h-2 bg-gray-900 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+               <div className="w-2 h-2 bg-gray-900 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+             </div>
+           </div>
+        )}
+      </main>
+
       <Footer />
     </div>
   );
-};  
+};
 
 export default HomePage;
