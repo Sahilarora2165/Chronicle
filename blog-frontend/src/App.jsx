@@ -6,6 +6,7 @@ import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import HomePage from "./pages/HomePage";
+import PublicProfile from "./pages/PublicProfile";
 
 // Lazy load admin panel components for code splitting - reduces initial bundle size
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -19,6 +20,7 @@ const EditPost = lazy(() => import("./pages/EditPost"));
 const CommentDetail = lazy(() => import("./pages/CommentDetail"));
 const EditComment = lazy(() => import("./pages/EditComment"));
 const RecentActivities = lazy(() => import("./pages/RecentActivities"));
+
 
 // Lazy load less frequently accessed pages
 const WriteBlog = lazy(() => import("./pages/WriteBlog"));
@@ -57,6 +59,7 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<Privacy />} /> 
           <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/profile/:id" element={<PublicProfile />} />
           
           {/* Protected Admin Panel Routes with Sidebar */}
           <Route
