@@ -3,22 +3,49 @@ import { Link } from "react-router-dom";
 import api from "../axios";
 import HomeHeader from "../components/HomeHeader";
 import Footer from "../components/Footer";
+import { ArrowRight, Quote, Clock } from "lucide-react";
+
+// 1. Minimal Skeleton Loader (Updated to match new aspect ratios)
+const PostSkeleton = () => (
+  <div className="flex flex-col space-y-4 animate-pulse">
+    <div className="bg-gray-100 h-[240px] w-full rounded-sm" />
+    <div className="space-y-3 pt-2">
+      <div className="h-3 bg-gray-100 rounded w-1/4" />
+      <div className="h-8 bg-gray-100 rounded w-full" />
+      <div className="h-4 bg-gray-100 rounded w-2/3" />
+    </div>
+  </div>
+);
+
+
+// 3. Helper: Generate Pastel Color (kept your logic, refined colors)
+const generatePastelColor = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = hash % 360;
+  return `hsl(${h}, 20%, 94%)`; // Lower saturation for a more "paper-like" feel
+};
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState("");
 
   const isFetching = useRef(false);
 
+  // Logic: Fetch Posts
   const fetchPosts = async (pageNum, isReset = false) => {
     if (isFetching.current || (!hasMore && !isReset)) return;
 
     isFetching.current = true;
     if (pageNum === 0) setLoading(true);
+    else setLoadingMore(true);
 
     try {
       const response = await api.get(`/posts?page=${pageNum}`);
@@ -33,25 +60,21 @@ const HomePage = () => {
       if (contentArray.length === 0) {
         setHasMore(false);
       } else {
-        const postsWithRandomHeight = contentArray.map(post => ({
-          ...post,
-          cardHeight: 420,
-        }));
-
         if (isReset) {
-          setPosts(postsWithRandomHeight);
+          setPosts(contentArray);
           setPage(0);
           setHasMore(true);
         } else {
-          setPosts(prev => [...prev, ...postsWithRandomHeight]);
+          setPosts(prev => [...prev, ...contentArray]);
         }
       }
       setError("");
     } catch (err) {
       console.error("Error fetching posts:", err);
-      setError("Failed to load posts. Please try again later.");
+      setError("Failed to load stories.");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       isFetching.current = false;
     }
   };
@@ -60,6 +83,7 @@ const HomePage = () => {
     fetchPosts(0);
   }, []);
 
+  // Logic: Search Debounce
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (searchQuery.trim() === "") {
@@ -71,10 +95,11 @@ const HomePage = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
+  // Logic: Infinite Scroll
   useEffect(() => {
     const handleScroll = () => {
       if (
-        window.innerHeight + document.documentElement.scrollTop + 200 >=
+        window.innerHeight + document.documentElement.scrollTop + 300 >=
         document.documentElement.offsetHeight
       ) {
         if (searchQuery === "" && hasMore && !isFetching.current) {
@@ -89,6 +114,7 @@ const HomePage = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [page, hasMore, searchQuery]);
 
+  // Filter for search
   const filteredPosts = posts.filter(post =>
     post.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -97,111 +123,123 @@ const HomePage = () => {
     <div className="flex flex-col min-h-screen bg-white text-gray-900 font-sans selection:bg-black selection:text-white">
       <HomeHeader onSearch={setSearchQuery} />
 
-      {/* Main Content Wrapper */}
-      <main className="flex-grow max-w-[1600px] mx-auto w-full px-4 sm:px-8 lg:px-12 pb-20">
+      <main className="flex-grow w-full max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 pb-4">
 
-        {/* Hero Section */}
-        {/* Added mt-32 here to give space for the Floating Header */}
-        <div className="mt-32 mb-20 text-center max-w-3xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-serif font-medium tracking-tight mb-4 text-gray-900">
-            Stories & Ideas
+        {/* 4. Editorial Hero Section - The "Manifesto" */}
+        <section className="pt-32 pb-20 max-w-4xl border-b border-gray-100 mb-12">
+          <h1 className="text-5xl md:text-7xl font-serif font-medium tracking-tighter text-gray-900 mb-6 leading-[0.95]">
+             Human stories & ideas.
           </h1>
-          <p className="text-lg md:text-xl text-gray-500 font-light leading-relaxed">
-            A collection of thoughts, design, and technology.
+          <p className="text-xl md:text-2xl text-gray-400 font-serif leading-relaxed max-w-2xl">
+            A place to read, write, and deepen your understanding of the world.
           </p>
-        </div>
+        </section>
 
+        {/* 5. Content Grid */}
         {loading && posts.length === 0 ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16">
+            {[1, 2, 3, 4, 5, 6].map((n) => <PostSkeleton key={n} />)}
           </div>
         ) : error && posts.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
-            {error}
+          <div className="text-center py-20">
+            <p className="text-gray-500 font-serif text-lg">{error}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-            {filteredPosts.map((post) => (
-              <Link
-                key={post.id}
-                to={`/posts/${post.id}`}
-                className="group flex flex-col h-full"
-              >
-                <article className="flex flex-col h-full border border-gray-100 rounded-2xl overflow-hidden bg-white hover:shadow-xl hover:shadow-gray-200/50 hover:border-gray-200 transition-all duration-500 ease-out">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-20">
+            {filteredPosts.map((post) => {
+              const hasImage = post.imageUrl && post.imageUrl.trim() !== "";
+              const fallbackColor = generatePastelColor(post.title + post.id);
 
-                  {/* Image Section */}
-                  <div className="relative w-full aspect-[4/3] bg-gray-50 overflow-hidden">
-                    <img
-                      src={post.imageUrl || "https://images.unsplash.com/photo-1499750310159-5b9f4b9cf29d?q=80&w=1000&auto=format&fit=crop"}
-                      alt={post.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-500" />
-                  </div>
+              return (
+                <Link
+                  key={post.id}
+                  to={`/posts/${post.id}`}
+                  className="group block h-full cursor-pointer"
+                >
+                  <article className="flex flex-col h-full">
+                    {/* Image Area - Cinematic Aspect Ratio */}
+                    <div className="relative w-full aspect-[3/2] overflow-hidden bg-gray-50 mb-6 border border-gray-100 group-hover:border-gray-200 transition-colors">
+                      {hasImage ? (
+                        <img
+                          src={post.imageUrl}
+                          alt={post.title}
+                          loading="lazy"
+                          className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
+                        />
+                      ) : (
+                        // Fallback: Elegant Typography
+                        <div
+                          className="w-full h-full flex flex-col items-center justify-center p-8 text-center transition-transform duration-700 group-hover:scale-105"
+                          style={{ backgroundColor: fallbackColor }}
+                        >
+                          <Quote className="w-8 h-8 text-black/10 mb-4" />
+                          <div className="max-w-[80%]">
+                            <h3 className="text-lg font-serif font-bold text-gray-900 leading-tight line-clamp-3 opacity-40">
+                              {post.title}
+                            </h3>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Content Section */}
-                  <div className="p-6 flex flex-col flex-grow">
-                    <div className="flex items-center space-x-2 mb-4">
-                      <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
-                        {(post.username || post.author || "A").charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
-                          {post.username || post.author || "Unknown Author"}
+                    {/* Content */}
+                    <div className="flex flex-col flex-grow">
+                      {/* Meta Data: Author & Date */}
+                      <div className="flex items-center space-x-2 mb-3 text-xs font-bold tracking-wider uppercase text-gray-500">
+                        <span className="text-black">
+                          {post.username || post.author || "Editorial"}
                         </span>
-                        <span className="text-[10px] text-gray-400 font-medium">
+                        <span className="text-gray-300">•</span>
+                        <span>
                           {new Date(post.createdAt).toLocaleDateString("en-US", {
                             month: "short", day: "numeric"
                           })}
                         </span>
                       </div>
+
+                      {/* Title - Large & Serif */}
+                      <h2 className="text-2xl font-serif font-bold text-gray-900 mb-3 leading-snug group-hover:underline decoration-1 decoration-gray-300 underline-offset-4 transition-all">
+                        {post.title}
+                      </h2>
+
+                      {/* Excerpt */}
+                      <p className="text-gray-500 font-serif text-base leading-relaxed line-clamp-3 mb-4 flex-grow">
+                        {post.content}
+                      </p>
+
+                      {/* Footer: Read Time & Action */}
+                      <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-100">
+
+                         <span className="text-sm font-medium text-black flex items-center gap-1 group-hover:gap-2 transition-all">
+                            Read story <ArrowRight className="w-4 h-4" />
+                         </span>
+                      </div>
                     </div>
-
-                    <h2 className="text-xl font-serif font-semibold text-gray-900 leading-tight mb-3 group-hover:underline decoration-1 underline-offset-4 decoration-gray-300">
-                      {post.title}
-                    </h2>
-
-                    <p className="text-gray-500 font-light text-sm leading-relaxed line-clamp-3 mb-4 flex-grow">
-                      {post.content}
-                    </p>
-
-                    <div className="pt-4 border-t border-gray-50 mt-auto flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-y-2 group-hover:translate-y-0">
-                      <span className="text-xs font-semibold text-gray-900">Read article</span>
-                      <svg className="w-4 h-4 text-gray-900 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                      </svg>
-                    </div>
-                  </div>
-                </article>
-              </Link>
-            ))}
+                  </article>
+                </Link>
+              );
+            })}
           </div>
         )}
 
         {/* Infinite Scroll Loader */}
-        {!loading && hasMore && searchQuery === "" && (
-          <div className="py-12 text-center">
-            <div className="inline-flex items-center space-x-2 text-gray-400 text-sm">
-              <span>Load more stories</span>
-              <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-              </svg>
+        {loadingMore && (
+          <div className="py-20 text-center">
+            <div className="inline-flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-1.5 h-1.5 bg-black rounded-full animate-bounce"></div>
             </div>
           </div>
         )}
 
-        {isFetching.current && posts.length > 0 && (
-           <div className="py-12 text-center">
-             <div className="inline-flex items-center space-x-2">
-               <div className="w-2 h-2 bg-gray-900 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-               <div className="w-2 h-2 bg-gray-900 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-               <div className="w-2 h-2 bg-gray-900 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-             </div>
-           </div>
+        {/* End of Feed Marker */}
+        {!loading && !hasMore && posts.length > 0 && searchQuery === "" && (
+          <div className="py-20 text-center border-t border-gray-100 mt-12">
+            <p className="text-2xl font-serif italic text-gray-300">You have reached the end.</p>
+          </div>
         )}
       </main>
-
       <Footer />
     </div>
   );

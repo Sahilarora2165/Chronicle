@@ -1,69 +1,126 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { ArrowLeft, Shield, Lock, Eye, Database, FileText } from "lucide-react";
 
 const Privacy = () => {
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 p-6 md:p-8">
-      <div className="max-w-5xl mx-auto">
-        {/* Breadcrumb Navigation */}
-        <div className="mb-6">
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="text-sm font-cormorant font-medium"
-          >
-            <Link
-              to="/"
-              className="text-gray-600 hover:text-gray-900 relative group transition-all duration-300 ease-in-out"
-            >
-              Home
-              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-in-out"></span>
-            </Link>
-            <span className="text-gray-400 mx-2">/</span>
-            <span className="text-gray-900">Privacy</span>
-          </motion.div>
-        </div>
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
-        {/* Content */}
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 10, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { duration: 0.5 } }
+  };
+
+  return (
+    <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-black selection:text-white">
+
+      {/* 1. Navigation */}
+      <nav className="fixed top-0 left-0 w-full bg-white/95 backdrop-blur-sm z-40 border-b border-gray-100 h-16 flex items-center px-6 md:px-12 transition-all">
+         <Link to="/" className="group flex items-center text-sm font-medium text-gray-500 hover:text-black transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-2 transition-transform group-hover:-translate-x-1" />
+            Return Home
+         </Link>
+      </nav>
+
+      {/* 2. Main Content */}
+      <main className="pt-32 pb-24 px-6 md:px-12 max-w-[740px] mx-auto">
+
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
         >
-          <h1 className="text-4xl font-playfair font-bold text-gray-900 tracking-tight mb-6">
-            Privacy Policy
-          </h1>
-          <p className="text-lg font-cormorant text-gray-600 leading-relaxed mb-6">
-            At Blogify, your privacy is our priority. This Privacy Policy outlines how we collect, use, and protect your personal information when you use our platform.
-          </p>
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-playfair font-semibold text-gray-900 mb-2">Information We Collect</h2>
-              <p className="text-sm font-cormorant text-gray-600">
-                We may collect personal data such as your username, email address, and profile information when you register or interact with Blogify. We also gather usage data to improve your experience.
-              </p>
+            {/* Header */}
+            <motion.div variants={itemVariants} className="mb-16 border-b border-gray-900 pb-8">
+                <div className="flex items-center gap-3 mb-4 text-gray-400">
+                    <Shield className="w-5 h-5" />
+                    <span className="text-xs font-bold uppercase tracking-widest">Legal Documentation</span>
+                </div>
+                <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tight mb-4">
+                    Privacy Policy
+                </h1>
+                <p className="text-gray-500 font-serif italic text-lg">
+                    Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </p>
+            </motion.div>
+
+            {/* Content Sections */}
+            <div className="space-y-12">
+
+                {/* Intro */}
+                <motion.section variants={itemVariants}>
+                    <p className="text-lg md:text-xl font-serif text-gray-900 leading-relaxed">
+                        At <strong>Chronicle</strong>, we believe privacy is not a feature, but a fundamental right. We stripped away the noise to build this platform, and we apply the same philosophy to your data: we only collect what is strictly necessary to tell your story.
+                    </p>
+                </motion.section>
+
+                {/* Section 1 */}
+                <motion.section variants={itemVariants} className="grid grid-cols-1 md:grid-cols-[40px_1fr] gap-4">
+                    <div className="pt-1"><Database className="w-5 h-5 text-gray-400" /></div>
+                    <div>
+                        <h2 className="text-sm font-bold uppercase tracking-widest mb-3">1. Information Collection</h2>
+                        <p className="text-gray-600 leading-relaxed font-serif">
+                             We collect minimal personal data—specifically your username, email address, and profile details—solely to facilitate your account creation and interaction within the platform. We do not track your activity across the web, nor do we harvest data for advertising algorithms.
+                        </p>
+                    </div>
+                </motion.section>
+
+                {/* Section 2 */}
+                <motion.section variants={itemVariants} className="grid grid-cols-1 md:grid-cols-[40px_1fr] gap-4">
+                    <div className="pt-1"><Eye className="w-5 h-5 text-gray-400" /></div>
+                    <div>
+                        <h2 className="text-sm font-bold uppercase tracking-widest mb-3">2. Usage of Data</h2>
+                        <p className="text-gray-600 leading-relaxed font-serif">
+                            Your information serves one purpose: to personalize your reading and writing experience. We use your data to manage your account, publish your posts, and notify you of community interactions. We strictly prohibit the sale of your personal data to third-party brokers.
+                        </p>
+                    </div>
+                </motion.section>
+
+                {/* Section 3 */}
+                <motion.section variants={itemVariants} className="grid grid-cols-1 md:grid-cols-[40px_1fr] gap-4">
+                    <div className="pt-1"><Lock className="w-5 h-5 text-gray-400" /></div>
+                    <div>
+                        <h2 className="text-sm font-bold uppercase tracking-widest mb-3">3. Security & Ownership</h2>
+                        <p className="text-gray-600 leading-relaxed font-serif">
+                            Your stories belong to you. We employ industry-standard encryption to protect your account. While no digital platform is impenetrable, we are committed to transparency and will notify you immediately of any security events. You retain full copyright ownership of all content published on Chronicle.
+                        </p>
+                    </div>
+                </motion.section>
+
+                {/* Section 4 */}
+                <motion.section variants={itemVariants} className="grid grid-cols-1 md:grid-cols-[40px_1fr] gap-4">
+                    <div className="pt-1"><FileText className="w-5 h-5 text-gray-400" /></div>
+                    <div>
+                        <h2 className="text-sm font-bold uppercase tracking-widest mb-3">4. Your Rights</h2>
+                        <p className="text-gray-600 leading-relaxed font-serif">
+                            You have the right to access, rectify, or erase your personal data at any time. You can export your stories or delete your account permanently via your profile settings. For specific legal inquiries, please contact our data protection team at{" "}
+                            <a href="mailto:privacy@chronicle.com" className="text-black underline underline-offset-4 decoration-gray-300 hover:decoration-black transition-all font-medium">
+                                privacy@chronicle.com
+                            </a>.
+                        </p>
+                    </div>
+                </motion.section>
+
             </div>
-            <div>
-              <h2 className="text-xl font-playfair font-semibold text-gray-900 mb-2">How We Use Your Data</h2>
-              <p className="text-sm font-cormorant text-gray-600">
-                Your information is used to personalize your experience, manage your account, and communicate with you. We do not sell your data to third parties.
-              </p>
-            </div>
-            <div>
-              <h2 className="text-xl font-playfair font-semibold text-gray-900 mb-2">Your Rights</h2>
-              <p className="text-sm font-cormorant text-gray-600">
-                You can access, update, or delete your personal information at any time through your profile settings. For further assistance, contact us at{" "}
-                <a href="mailto:privacy@blogify.com" className="hover:text-gray-900 transition-colors duration-300">
-                  privacy@blogify.com
-                </a>
-                .
-              </p>
-            </div>
-          </div>
+
+            {/* Footer */}
+            <motion.div variants={itemVariants} className="mt-20 pt-10 border-t border-gray-100 text-center md:text-left">
+                <p className="text-xs text-gray-400 uppercase tracking-widest font-bold">
+                    © {new Date().getFullYear()} Chronicle Platform. All rights reserved.
+                </p>
+            </motion.div>
         </motion.div>
-      </div>
+      </main>
     </div>
   );
 };

@@ -1,11 +1,39 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom"; // Added Link import
+import ReactMarkdown from "react-markdown";
 import api from "../axios";
 import HomeHeader from "../components/HomeHeader";
-import { MessageCircle, X, ThumbsUp } from "lucide-react"; // Added ThumbsUp icon
+import { MessageCircle, X, ThumbsUp, Clock, ArrowLeft } from "lucide-react";
+import remarkBreaks from "remark-breaks";
+
+// 1. Article Skeleton Loader (Premium Feel)
+const ArticleSkeleton = () => (
+    <div className="max-w-[700px] mx-auto pt-32 px-6 animate-pulse">
+        <div className="h-4 bg-gray-200 w-24 rounded mb-6"></div>
+        <div className="h-12 bg-gray-200 w-3/4 rounded mb-4"></div>
+        <div className="h-12 bg-gray-200 w-1/2 rounded mb-10"></div>
+
+        <div className="flex items-center gap-4 mb-10">
+            <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+            <div className="space-y-2">
+                <div className="h-3 bg-gray-200 w-32 rounded"></div>
+                <div className="h-3 bg-gray-200 w-24 rounded"></div>
+            </div>
+        </div>
+
+        <div className="w-full h-[400px] bg-gray-200 rounded-lg mb-12"></div>
+
+        <div className="space-y-4">
+            <div className="h-4 bg-gray-200 w-full rounded"></div>
+            <div className="h-4 bg-gray-200 w-full rounded"></div>
+            <div className="h-4 bg-gray-200 w-5/6 rounded"></div>
+            <div className="h-4 bg-gray-200 w-full rounded"></div>
+        </div>
+    </div>
+);
 
 const PostContent = () => {
-    const { id } = useParams(); // Blog post ID from URL
+    const { id } = useParams();
     const navigate = useNavigate();
 
     // State variables
@@ -13,427 +41,343 @@ const PostContent = () => {
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [likes, setLikes] = useState(0); // Changed initial value to number
-    const [liked, setLiked] = useState(false); // Whether the user liked the post
-    const [newComment, setNewComment] = useState(""); // New comment input
-    const [showComments, setShowComments] = useState(false); // Control comment slide-in
-    const token = localStorage.getItem("token"); // JWT token from localStorage
+    const [likes, setLikes] = useState(0);
+    const [liked, setLiked] = useState(false);
+    const [newComment, setNewComment] = useState("");
+    const [showComments, setShowComments] = useState(false);
+    const [scrollProgress, setScrollProgress] = useState(0);
 
-    // Disable body scrolling when comment panel is open
+    const token = localStorage.getItem("token");
+
+    // Reading Time Calculator
+    const readingTime = useMemo(() => {
+        if (!post?.content) return "";
+        const wordsPerMinute = 200;
+        const words = post.content.trim().split(/\s+/).length;
+        const minutes = Math.ceil(words / wordsPerMinute);
+        return `${minutes} min read`;
+    }, [post?.content]);
+
+    // Scroll Progress Logic
     useEffect(() => {
+        const handleScroll = () => {
+            const totalScroll = document.documentElement.scrollTop;
+            const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scroll = `${totalScroll / windowHeight}`;
+            setScrollProgress(Number(scroll));
+        };
+
+        window.addEventListener('scroll', handleScroll);
+
+        // Lock body scroll when comments are open
         if (showComments) {
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'auto';
         }
 
-        // Cleanup function to reset overflow when component unmounts
         return () => {
+            window.removeEventListener('scroll', handleScroll);
             document.body.style.overflow = 'auto';
         };
     }, [showComments]);
 
-    // Fetch post and comments
+    // Fetch Data
     useEffect(() => {
         const fetchPostAndComments = async () => {
             setLoading(true);
-            setError(null);
-
             try {
-                const postResponse = await api.get(`/posts/${id}`, { timeout: 5000 });
-                setPost(postResponse.data);
-
-                const commentsResponse = await api.get(`/comments/blog/${id}`, { timeout: 5000 });
-                setComments(commentsResponse.data || []);
+                const [postRes, commentsRes] = await Promise.all([
+                    api.get(`/posts/${id}`),
+                    api.get(`/comments/blog/${id}`)
+                ]);
+                setPost(postRes.data);
+                setComments(commentsRes.data || []);
             } catch (err) {
-                const errorDetails = {
-                    message: err.message,
-                    code: err.code,
-                    status: err.response ? err.response.status : "No status",
-                    data: err.response ? err.response.data : "No response data"
-                };
-                console.error("Error fetching post or comments:", errorDetails);
-                if (err.code === "ERR_NETWORK") {
-                    setError("Cannot connect to the server. Please check if it's running.");
-                } else if (err.response?.status === 404) {
-                    setError("Post or comments not found.");
-                } else if (err.response?.status === 403) {
-                    setError("Access denied. Please log in if required.");
-                } else {
-                    setError("An unexpected error occurred.");
-                }
+                console.error("Error fetching data:", err);
+                setError(err.response?.status === 404 ? "Story not found." : "Something went wrong.");
             } finally {
                 setLoading(false);
             }
         };
-
         fetchPostAndComments();
     }, [id]);
 
-    // Fetch the like count and whether the user has liked it:
+    // Fetch Likes
     useEffect(() => {
         const fetchLikes = async () => {
             try {
-                // Fetch total like count for the post
-                const likesResponse = await api.get(`/likes/count/${id}`, {
-                    timeout: 5000
-                });
-                // Convert likes to a number to ensure proper math operations
-                setLikes(Number(likesResponse.data)); // Store total like count as number
+                const likesRes = await api.get(`/likes/count/${id}`);
+                setLikes(Number(likesRes.data));
 
-                // Check if the user has liked the post (only if logged in)
-                if (!token) return; // No token means user is not logged in
-
-                // Get user ID from backend
-                const userResponse = await api.get("/users/me", {
-                    timeout: 5000
-                });
-                const userId = userResponse.data.id;
-
-                // Check if user has liked the post
-                const userLikeResponse = await api.get(`/likes/status`, {
-                    params: { userId, blogPostId: id },
-                    timeout: 5000
-                });
-
-                setLiked(userLikeResponse.data); // Boolean: true if liked, false otherwise
-            } catch (err) {
-                console.error("Error fetching likes:", {
-                    message: err.message,
-                    status: err.response ? err.response.status : "No status",
-                    data: err.response ? err.response.data : "No response data"
-                });
-
-                if (err.response?.status === 403) {
-                    setError("Session expired. Please log in again.");
-                    navigate("/login");
-                } else {
-                    setError("Failed to fetch likes.");
+                if (token) {
+                    const userRes = await api.get("/users/me");
+                    const userLikeRes = await api.get(`/likes/status`, {
+                        params: { userId: userRes.data.id, blogPostId: id }
+                    });
+                    setLiked(userLikeRes.data);
                 }
+            } catch (err) {
+                console.error("Error fetching likes", err);
             }
         };
-
         fetchLikes();
-    }, [id, token]); // Runs when 'id' or 'token' changes
+    }, [id, token]);
 
-
+    // Handlers
     const handleLikeToggle = async () => {
-        if (!token) {
-            setError("Please log in to like posts.");
-            navigate("/login");
-            return;
-        }
+        if (!token) return navigate("/login");
+        const previousLiked = liked;
+        const previousLikes = likes;
+
+        setLiked(!liked);
+        setLikes(prev => prev + (liked ? -1 : 1));
 
         try {
-            // Step 1: Get user ID
-            const userResponse = await api.get("/users/me", {
-                timeout: 5000
+            const userRes = await api.get("/users/me");
+            await api.post("/likes/toggle", null, {
+                params: { userId: userRes.data.id, blogPostId: id }
             });
-            const userId = userResponse.data.id;
-
-            // Calculate the new state before making the API call
-            const newLikedState = !liked;
-            const newLikeCount = newLikedState ? likes + 1 : likes - 1;
-            
-            // Update UI immediately (optimistic update)
-            setLiked(newLikedState);
-            setLikes(newLikeCount);
-
-            // Step 2: Toggle like (API call)
-            await api.post(
-                "/likes/toggle",
-                null, // No request body, just params
-                {
-                    params: { userId, blogPostId: id }, // Send userId & postId as query params
-                    timeout: 5000
-                }
-            );
-
-            // No need to update UI again - we already did it optimistically
-            // The server response doesn't actually tell us the new state reliably
-
         } catch (err) {
-            console.error("Error toggling like:", {
-                message: err.message,
-                status: err.response ? err.response.status : "No status",
-                data: err.response ? err.response.data : "No response data"
-            });
-
-            // Revert the optimistic update since the API call failed
-            setLiked(liked); // Revert to original state
-            setLikes(liked ? likes : likes - 1); // Revert like count
-
-            if (err.response?.status === 403) {
-                setError("Session expired. Please log in again.");
-                navigate("/login");
-            } else {
-                setError("Failed to update like status.");
-            }
+            setLiked(previousLiked);
+            setLikes(previousLikes);
         }
     };
 
-    // Handle comment submission
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (!token) {
-            setError("Please log in to comment.");
-            navigate("/login");
-            return;
-        }
+        if (!token) return navigate("/login");
         if (!newComment.trim()) return;
 
         try {
-            const userResponse = await api.get("/users/me", {
-                timeout: 5000
+            const userRes = await api.get("/users/me");
+            const res = await api.post("/comments", newComment, {
+                headers: { "Content-Type": "text/plain" },
+                params: { userId: userRes.data.id, blogPostId: id }
             });
-            const userId = userResponse.data.id;
-
-            const commentResponse = await api.post(
-                "/comments",
-                newComment, // Plain text body
-                {
-                    headers: {
-                        "Content-Type": "text/plain" // Match backend expectation
-                    },
-                    params: { // Send userId and blogPostId as query params
-                        userId,
-                        blogPostId: id
-                    },
-                    timeout: 5000
-                }
-            );
-            setComments([...comments, commentResponse.data]);
+            setComments([...comments, res.data]);
             setNewComment("");
-            setError(null);
         } catch (err) {
-            const errorDetails = {
-                message: err.message,
-                code: err.code,
-                status: err.response ? err.response.status : "No status",
-                data: err.response ? err.response.data : "No response data"
-            };
-            console.error("Error posting comment:", errorDetails);
-            if (err.response?.status === 403) {
-                setError("Forbidden: Invalid or expired token. Please log in again.");
-                navigate("/login");
-            } else if (err.response?.status === 400) {
-                setError("Invalid comment data.");
-            } else {
-                setError("Failed to post comment.");
-            }
+            console.error("Comment failed", err);
         }
     };
 
-    // Toggle comment section visibility
-    const toggleComments = () => {
-        setShowComments(!showComments);
-    };
+    if (loading) return <ArticleSkeleton />;
 
-    // Loading state
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p className="text-gray-600">Loading...</p>
-            </div>
-        );
-    }
-
-    // Error or no post state
     if (error || !post) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <p className="text-red-600">{error || "Post not found."}</p>
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
+                <p className="text-gray-900 font-serif text-2xl mb-4">{error || "Story not found."}</p>
+                <button onClick={() => navigate(-1)} className="text-sm border-b border-black pb-1 hover:opacity-70">
+                    Return home
+                </button>
             </div>
         );
     }
 
-    // Main content
+    const heroImage = post.imageUrl;
+
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-black selection:text-white">
+
+            {/* 2. Reading Progress Bar */}
+            <div className="fixed top-0 left-0 w-full h-1 bg-transparent z-[60]">
+                <div
+                    className="h-full bg-black transition-all duration-100 ease-out"
+                    style={{ width: `${scrollProgress * 100}%` }}
+                />
+            </div>
+
             <HomeHeader />
 
-            {/* Main content with proper spacing to prevent header overlap */}
-            <div className="max-w-3xl mx-auto pt-24 pb-12 px-4 sm:px-6">
-                {/* Post Content */}
-                <article className="mb-16">
-                    {/* Title first */}
-                    <h1 className="text-5xl font-bold text-gray-900 mb-6 font-serif leading-tight">
+            <main className="max-w-[720px] mx-auto pt-32 pb-32 px-6">
+
+                {/* Back Button */}
+                <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center text-sm text-gray-400 hover:text-black mb-8 transition-colors group"
+                >
+                    <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+                    Back to feed
+                </button>
+
+                {/* Header */}
+                <header className="mb-10">
+                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-serif font-bold text-gray-900 leading-[1.1] mb-8 tracking-tight">
                         {post.title}
                     </h1>
 
-                    {/* Author info with comment and like buttons */}
-                    <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                                <span className="text-sm font-medium text-gray-600">
-                                    {post.username ? post.username[0].toUpperCase() : "U"}
-                                </span>
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-gray-900">
-                                    {post.username || "Unknown"}
-                                </p>
-                                <p className="text-sm text-gray-500">
-                                    {new Date(post.createdAt).toLocaleDateString('en-US', {
-                                        month: 'long',
-                                        day: 'numeric',
-                                        year: 'numeric'
-                                    })}
-                                </p>
+                    {/* Meta Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-6 border-t border-b border-gray-100 gap-6">
+
+                        {/* Author Info - Now Clickable */}
+                        <div className="flex items-center gap-3">
+                            {/* Avatar Link */}
+                            <Link
+                                to={`/profile/${post.userId}`}
+                                className="block w-10 h-10 rounded-full bg-black flex items-center justify-center text-white font-serif font-bold text-sm hover:opacity-80 transition-opacity"
+                            >
+                                {post.username ? post.username[0].toUpperCase() : "A"}
+                            </Link>
+
+                            <div className="flex flex-col">
+                                {/* Name Link */}
+                                <Link
+                                    to={`/profile/${post.userId}`}
+                                    className="text-sm font-bold text-gray-900 hover:underline underline-offset-2 decoration-gray-400"
+                                >
+                                    {post.username || "Unknown Author"}
+                                </Link>
+
+                                <div className="flex items-center text-xs text-gray-500 gap-2">
+                                    <span>{new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {readingTime}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Buttons Container */}
-                        <div className="flex items-center space-x-4">
-                            {/* Like Button with ThumbsUp icon */}
-                            <button 
-                                onClick={handleLikeToggle} 
-                                className="flex items-center space-x-2 transition-colors focus:outline-none"
+                        {/* Actions */}
+                        <div className="flex items-center gap-6 text-gray-400">
+                            <button
+                                onClick={handleLikeToggle}
+                                className={`flex items-center gap-2 text-sm font-medium transition-colors ${liked ? 'text-black' : 'hover:text-black'}`}
                             >
-                                <ThumbsUp 
-                                    className={`w-5 h-5 ${liked ? 'text-blue-600 fill-blue-600' : 'text-gray-500 hover:text-gray-900'}`} 
-                                />
-                                <span className={`text-sm font-medium ${liked ? 'text-blue-600' : 'text-gray-500 hover:text-gray-900'}`}>
-                                    {likes}
-                                </span>
+                                <ThumbsUp className={`w-5 h-5 ${liked ? 'fill-black' : ''}`} />
+                                <span>{likes}</span>
                             </button>
 
-                            {/* Comment Button */}
                             <button
-                                onClick={toggleComments}
-                                className="flex items-center space-x-2 text-gray-500 hover:text-gray-900 transition-colors"
+                                onClick={() => setShowComments(true)}
+                                className="flex items-center gap-2 text-sm font-medium hover:text-black transition-colors"
                             >
                                 <MessageCircle className="w-5 h-5" />
-                                <span className="text-sm font-medium">{comments.length}</span>
+                                <span>{comments.length}</span>
                             </button>
                         </div>
                     </div>
+                </header>
 
-                    {/* Image after author info */}
-                    {post.imageUrl && (
-                        <img
-                            src={post.imageUrl}
-                            alt={post.title}
-                            loading="lazy"
-                            className="w-full h-96 object-cover mb-8 rounded-xl"
-                            onError={(e) => {
-                                e.target.style.display = "none";
-                                console.error("Failed to load image:", post.imageUrl);
-                            }}
-                        />
-                    )}
+                {/* Hero Image */}
+                {heroImage && (
+                    <figure className="mb-14 -mx-6 sm:mx-0">
+                        <div className="overflow-hidden sm:rounded-md shadow-sm bg-gray-50">
+                            <img
+                                src={heroImage}
+                                alt={post.title}
+                                className="w-full h-auto object-cover"
+                                loading="lazy"
+                            />
+                        </div>
+                        {post.imageCaption && (
+                            <figcaption className="mt-3 text-center text-xs text-gray-400 font-sans">
+                                {post.imageCaption}
+                            </figcaption>
+                        )}
+                    </figure>
+                )}
 
-                    {/* Content last */}
-                    <div className="prose prose-lg max-w-none text-gray-700 font-serif">
-                        <p
-                            className="text-2xl leading-8 mb-8 text-gray-600"
-                            style={{ whiteSpace: "pre-wrap" }}
-                        >
-                            {post.content}
-                        </p>
-                    </div>
+                {/* 3. Article Content (Typography Engine) */}
+                <article className="prose prose-lg prose-gray max-w-none
+                    prose-headings:font-serif prose-headings:font-bold prose-headings:text-gray-900
+                    prose-p:font-serif prose-p:text-gray-800 prose-p:leading-[1.8] prose-p:text-[18px]
+                    prose-a:text-black prose-a:underline hover:prose-a:text-gray-600
+                    prose-blockquote:border-l-2 prose-blockquote:border-black prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:font-serif prose-blockquote:text-gray-900
+                    prose-img:rounded-md prose-img:my-8
+                ">
+                    <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                        {post.content}
+                    </ReactMarkdown>
                 </article>
+            </main>
 
-                {/* Slide-in Comments Panel */}
-                <div
-                    className={`fixed top-0 right-0 h-full w-full md:w-96 bg-white shadow-lg transform transition-transform duration-300 z-50 ${showComments ? 'translate-x-0' : 'translate-x-full'
-                        }`}
-                    style={{ overflowY: 'auto', overflowX: 'hidden' }}
-                >
-                    <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-gray-900">
+            {/* 4. Sliding Comments Drawer */}
+            {showComments && (
+                <div className="fixed inset-0 z-[100] overflow-hidden">
+                    <div
+                        className="absolute inset-0 bg-black/20 backdrop-blur-[2px] transition-opacity"
+                        onClick={() => setShowComments(false)}
+                    />
+
+                    <div className="absolute inset-y-0 right-0 max-w-md w-full bg-white shadow-2xl transform transition-transform duration-300 ease-out flex flex-col">
+                        {/* Drawer Header */}
+                        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-white">
+                            <h2 className="text-xl font-serif font-bold text-gray-900">
                                 Responses ({comments.length})
                             </h2>
                             <button
-                                onClick={toggleComments}
-                                className="text-gray-500 hover:text-gray-900"
+                                onClick={() => setShowComments(false)}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
                             >
-                                <X className="w-6 h-6" />
+                                <X className="w-5 h-5" />
                             </button>
-                        </div>
-                    </div>
-
-                    <div className="p-6">
-                        {/* Comment Form */}
-                        <div className="mb-8">
-                            <div className="flex items-start space-x-4">
-                                <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                                    {token ? (
-                                        <span className="text-sm font-medium text-gray-600">
-                                            {localStorage.getItem("username")?.[0].toUpperCase() || "Y"}
-                                        </span>
-                                    ) : (
-                                        <span className="text-sm font-medium text-gray-600">?</span>
-                                    )}
-                                </div>
-                                <form onSubmit={handleCommentSubmit} className="flex-1">
-                                    <textarea
-                                        value={newComment}
-                                        onChange={(e) => setNewComment(e.target.value)}
-                                        placeholder="What are your thoughts?"
-                                        className="w-full p-4 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-900 resize-none text-lg font-serif placeholder-gray-400"
-                                        rows="3"
-                                    />
-                                    <div className="flex justify-end mt-4">
-                                        <button
-                                            type="submit"
-                                            className="px-6 py-2 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors text-sm font-medium disabled:opacity-50"
-                                            disabled={!newComment.trim()}
-                                        >
-                                            Respond
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
                         </div>
 
                         {/* Comments List */}
-                        {comments.length > 0 ? (
-                            <div className="space-y-8 pb-12">
-                                {comments.map((comment) => (
-                                    <div key={comment.id} className="flex items-start space-x-4">
-                                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                                            <span className="text-sm font-medium text-gray-600">
-                                                {comment.username ? comment.username[0].toUpperCase() : "A"}
-                                            </span>
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center space-x-3 mb-2">
-                                                <p className="text-sm font-medium text-gray-900">
-                                                    {comment.username || "Anonymous"}
-                                                </p>
-                                                <span className="text-gray-500 text-sm">·</span>
-                                                <p className="text-sm text-gray-500">
-                                                    {new Date(comment.createdAt).toLocaleDateString('en-US', {
-                                                        month: 'short',
-                                                        day: 'numeric'
-                                                    })}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                            {comments.length > 0 ? (
+                                comments.map((comment) => (
+                                    <div key={comment.id} className="group">
+                                        <div className="flex items-start gap-3 mb-2">
+                                            {/* Comment Avatar - Also Linked */}
+                                            <Link to={`/profile/${comment.userId}`} className="shrink-0">
+                                                <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 hover:bg-gray-200 transition-colors">
+                                                    {comment.username ? comment.username[0].toUpperCase() : "?"}
+                                                </div>
+                                            </Link>
+
+                                            <div className="flex-1">
+                                                <div className="flex items-baseline justify-between">
+                                                    <Link
+                                                        to={`/profile/${comment.userId}`}
+                                                        className="text-sm font-bold text-gray-900 hover:underline"
+                                                    >
+                                                        {comment.username || "Anonymous"}
+                                                    </Link>
+                                                    <span className="text-xs text-gray-400">
+                                                        {new Date(comment.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <p className="text-gray-700 text-sm mt-1 leading-relaxed font-serif">
+                                                    {comment.content}
                                                 </p>
                                             </div>
-                                            <p className="text-gray-700 font-serif leading-relaxed">
-                                                {comment.content}
-                                            </p>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-gray-500 text-center py-8">
-                                No responses yet. Be the first to share your thoughts.
-                            </p>
-                        )}
+                                ))
+                            ) : (
+                                <div className="text-center py-20">
+                                    <p className="text-gray-400 font-serif italic">No responses yet.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Input Area */}
+                        <div className="p-6 border-t border-gray-100 bg-white">
+                            <form onSubmit={handleCommentSubmit} className="relative">
+                                <textarea
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    placeholder="What are your thoughts?"
+                                    className="w-full bg-gray-50 rounded-xl p-4 text-sm outline-none focus:ring-1 focus:ring-black min-h-[100px] resize-none"
+                                />
+                                <div className="flex justify-end mt-3">
+                                    <button
+                                        type="submit"
+                                        disabled={!newComment.trim()}
+                                        className="bg-black text-white px-6 py-2 rounded-full text-xs font-bold uppercase tracking-wide hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Publish
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
-
-                {/* Overlay that appears when comment panel is open */}
-                {showComments && (
-                    <div
-                        className="fixed inset-0 bg-black bg-opacity-50 z-40 md:block"
-                        onClick={toggleComments}
-                    ></div>
-                )}
-            </div>
+            )}
         </div>
     );
 };

@@ -1,80 +1,60 @@
-import { Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowUp } from "lucide-react";
+import React from "react";
+import { Link } from "react-router-dom";
+import { Github, Twitter, Linkedin, Feather } from "lucide-react";
 
 const Footer = () => {
-  const navigate = useNavigate();
+    return (
+        <footer className="bg-white border-t border-gray-100 pt-20 pb-10 font-sans selection:bg-black selection:text-white">
+            <div className="max-w-[1600px] mx-auto px-6 md:px-12">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-12 mb-20">
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+                    {/* Brand Column - Takes up more space */}
+                    <div className="col-span-1 md:col-span-6">
+                        <Link to="/" className="flex items-center gap-2 text-3xl font-serif font-bold tracking-tighter text-gray-900 mb-6">
+                            <Feather className="w-6 h-6" />
+                            Chronicle.
+                        </Link>
+                        <p className="text-gray-500 text-base leading-relaxed max-w-md font-serif italic">
+                            A minimal publishing platform for writers and thinkers.
+                            We believe that every story deserves a sanctuary.
+                        </p>
+                    </div>
 
-  return (
-    <footer className="w-full mt-20 py-8 bg-gradient-to-r from-gray-100 to-gray-50 border-t border-gray-200">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-          {/* Brand Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="text-center md:text-left"
-          >
-            <h3 className="text-xl font-playfair font-bold text-gray-900 tracking-tight bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
-              Blogify
-            </h3>
-            <p className="text-xs font-cormorant text-gray-600 leading-relaxed">
-              Crafting stories, connecting souls since {new Date().getFullYear()}.
-            </p>
-          </motion.div>
+                    {/* Navigation Columns */}
+                    <div className="col-span-1 md:col-span-3">
+                        <h4 className="font-bold text-xs uppercase tracking-widest text-gray-900 mb-6">Explore</h4>
+                        <ul className="space-y-4 text-sm text-gray-500 font-medium">
+                            <li><Link to="/" className="hover:text-black transition-colors">Trending Stories</Link></li>
+                            <li><Link to="/write" className="hover:text-black transition-colors">Start Writing</Link></li>
+                            <li><Link to="/profile" className="hover:text-black transition-colors">Your Profile</Link></li>
+                        </ul>
+                    </div>
 
-          {/* Navigation Links */}
-          <motion.nav
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-            className="flex flex-col items-center md:items-start space-y-2"
-          >
-            {[
-              { to: "/about", label: "About Us" },
-              { to: "/contact", label: "Contact" },
-              { to: "/privacy", label: "Privacy Policy" },
-            ].map((item) => (
-              <Link
-                key={item.to}
-                to={item.to}
-                className="text-xs font-cormorant font-medium text-gray-700 hover:text-gray-900 relative group transition-all duration-300 ease-in-out"
-              >
-                {item.label}
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-gray-900 to-gray-700 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-in-out"></span>
-              </Link>
-            ))}
-          </motion.nav>
+                    {/* The New Pages */}
+                    <div className="col-span-1 md:col-span-3">
+                        <h4 className="font-bold text-xs uppercase tracking-widest text-gray-900 mb-6">Company</h4>
+                        <ul className="space-y-4 text-sm text-gray-500 font-medium">
+                            <li><Link to="/about" className="hover:text-black transition-colors">About Us</Link></li>
+                            <li><Link to="/contact" className="hover:text-black transition-colors">Contact</Link></li>
+                            <li><Link to="/privacy" className="hover:text-black transition-colors">Privacy Policy</Link></li>
+                        </ul>
+                    </div>
+                </div>
 
-          {/* Actions & Copyright */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
-            className="flex flex-col items-center md:items-end space-y-2"
-          >
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={scrollToTop}
-              className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-gray-50 to-gray-200 text-gray-800 rounded-full shadow-md hover:shadow-lg hover:from-gray-100 hover:to-gray-300 transition-all duration-300 font-cormorant text-xs font-medium"
-            >
-              <ArrowUp size={14} className="text-gray-600" />
-              Back to Top
-            </motion.button>
-            <span className="text-[10px] font-cormorant text-gray-500 tracking-wide">
-              © {new Date().getFullYear()} Blogify. All rights reserved.
-            </span>
-          </motion.div>
-        </div>
-      </div>
-    </footer>
-  );
+                {/* Bottom Bar */}
+                <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <p className="text-xs text-gray-400 font-bold tracking-wider uppercase">
+                        © {new Date().getFullYear()} Chronicle Platform.
+                    </p>
+                    <div className="flex gap-6">
+                        <a href="#" className="text-gray-400 hover:text-black transition-colors"><Twitter className="w-5 h-5"/></a>
+                        <a href="#" className="text-gray-400 hover:text-black transition-colors"><Github className="w-5 h-5"/></a>
+                        <a href="#" className="text-gray-400 hover:text-black transition-colors"><Linkedin className="w-5 h-5"/></a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    );
 };
 
 export default Footer;

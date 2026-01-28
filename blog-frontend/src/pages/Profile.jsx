@@ -1,20 +1,27 @@
 import { useEffect, useState } from "react";
 import api from "../axios";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useNavigate, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Edit3, LogOut, Trash2, Plus, Calendar,
+  X, Camera, PenTool, ArrowLeft, MoreHorizontal
+} from "lucide-react";
+
+// Helper for date formatting
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric'
+  });
+};
 
 const Profile = () => {
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [statistics, setStatistics] = useState({ postCount: 0, commentCount: 0 });
   const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState({
-    username: "",
-    bio: "",
-    profilePicture: null,
-  });
-  const [error, setError] = useState(null);
+  const [formData, setFormData] = useState({ username: "", bio: "", profilePicture: null });
   const [loading, setLoading] = useState(true);
+  const [previewImage, setPreviewImage] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,13 +40,10 @@ const Profile = () => {
           profilePicture: null,
         });
         fetchUserStatistics(response.data.id);
-      } else {
-        setError("Failed to fetch user details");
       }
-      setLoading(false);
     } catch (error) {
-      setError("You are not logged in. Redirecting to login...");
       navigate("/login");
+    } finally {
       setLoading(false);
     }
   };
@@ -49,7 +53,7 @@ const Profile = () => {
       const response = await api.get("/users/me/posts");
       setPosts(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      setError("Failed to fetch user posts");
+      console.error("Failed to fetch posts");
     }
   };
 
@@ -57,14 +61,7 @@ const Profile = () => {
     try {
       const response = await api.get(`/users/${userId}/statistics`);
       setStatistics(response.data);
-    } catch (error) {
-      console.error("Error fetching user statistics:", error);
-    }
-  };
-
-  const logoutUser = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+    } catch (error) { console.error(error); }
   };
 
   const handleEditProfile = async () => {
@@ -72,300 +69,264 @@ const Profile = () => {
       const formDataToSend = new FormData();
       formDataToSend.append("username", formData.username);
       formDataToSend.append("bio", formData.bio);
-
       if (formData.profilePicture) {
         formDataToSend.append("profilePicture", formData.profilePicture);
       }
-
       const response = await api.put(`/users/me`, formDataToSend, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-
       setUser(response.data);
       setEditMode(false);
-    } catch (error) {
-      console.error("Error updating profile:", error);
-    }
+    } catch (error) { console.error(error); }
   };
 
-  const handleEditPost = (postId) => {
-    navigate(`/update/${postId}`);
-  };
-
-  const handleDeletePost = async (postId) => {
-    if (window.confirm("Are you sure you want to delete this post?")) {
+  const handleDeletePost = async (e, postId) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this story?")) {
       try {
         await api.delete(`/posts/${postId}`);
         fetchUserPosts();
-      } catch (error) {
-        console.error("Error deleting post:", error);
-      }
+        fetchUserStatistics(user.id);
+      } catch (error) { console.error(error); }
     }
   };
 
-  const handlePostClick = (postId) => {
-    navigate(`/posts/${postId}`);
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({ ...formData, profilePicture: file });
+      setPreviewImage(URL.createObjectURL(file));
+    }
   };
 
+  // --- LOADING STATE ---
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="loading loading-spinner loading-lg text-black"></div>
-          <p className="text-gray-600 mt-2">Loading profile...</p>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+            <div className="w-16 h-16 bg-gray-100 rounded-full" />
+            <div className="h-4 w-32 bg-gray-100 rounded" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white p-6 md:p-8">
-      {error ? (
-        <div className="bg-white p-6 rounded-lg shadow-md backdrop-blur-sm bg-opacity-80">
-          <p className="text-red-500">{error}</p>
+    <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-black selection:text-white pb-24">
+
+      {/* 1. Navbar */}
+      <nav className="fixed top-0 left-0 w-full bg-white/95 backdrop-blur-sm border-b border-gray-100 z-40 h-16 flex items-center justify-between px-6 md:px-12 transition-all">
+        <div className="flex items-center gap-4">
+          <Link to="/" className="text-gray-400 hover:text-black transition-colors p-1">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
+          <span className="text-sm font-serif italic text-gray-400 hidden sm:block">
+            Author Profile
+          </span>
         </div>
-      ) : (
-        <div className="max-w-5xl mx-auto">
-          {/* Breadcrumb Navigation */}
-          <div className="mb-4">
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="text-sm font-medium"
-            >
-              <button
-                onClick={() => navigate("/")}
-                className="text-gray-600 hover:text-black relative group transition-all duration-300 ease-in-out"
-              >
-                Home
-                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-in-out"></span>
-              </button>
-              <span className="text-gray-400 mx-2">/</span>
-              <span className="text-black">Profile</span>
-            </motion.div>
-          </div>
 
-          {/* Header Section */}
-          <div className="mb-8 flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-            </div>
-            <button
-              onClick={logoutUser}
-              className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-sm"
-            >
-              Logout
-            </button>
-          </div>
-
-          {/* Profile Section */}
-          <div className="bg-white rounded-lg shadow-md backdrop-blur-sm bg-opacity-80 p-6 md:p-8 mb-8">
-            <div className="flex flex-col md:flex-row md:items-start gap-6">
-              <div className="flex-shrink-0">
-                <img
-                  src={user?.profilePicture || "/default-avatar.png"}
-                  alt="Profile"
-                  className="w-24 h-24 object-cover rounded-full shadow-lg"
-                  onError={(e) => {
-                    e.target.src = "/default-avatar.png";
-                  }}
-                />
-              </div>
-              <div className="flex-1">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-start">
-                  <div className="mb-4 md:mb-0">
-                    <h2 className="text-2xl font-bold text-gray-900">{user?.username || "No username available"}</h2>
-                    <p className="text-gray-500">{user?.email || "No email available"}</p>
-                    <div className="mt-3">
-                      <p className="text-gray-600">
-                        <span className="font-semibold text-gray-700">About Me:</span> {user?.bio || "No bio available"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <button
-                      onClick={() => setEditMode(true)}
-                      className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-sm"
-                    >
-                      Edit Profile
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* User Statistics */}
-            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-4 rounded-lg shadow-md backdrop-blur-sm bg-opacity-80">
-                <p className="text-2xl font-bold text-gray-900">{statistics.postCount}</p>
-                <p className="text-gray-500">Posts</p>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-md backdrop-blur-sm bg-opacity-80">
-                <p className="text-2xl font-bold text-gray-900">{statistics.commentCount}</p>
-                <p className="text-gray-500">Comments</p>
-              </div>
-            </div>
-          </div>
-
-          {/* User's Blog Posts */}
-          <div className="bg-white rounded-lg shadow-md backdrop-blur-sm bg-opacity-80 overflow-hidden">
-            <div className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900">Your Blog Posts</h3>
-              <button
-                onClick={() => navigate('/write')}
-                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-sm"
-              >
-                New Post
-              </button>
-            </div>
-
-            <div className="p-6">
-              {Array.isArray(posts) && posts.length > 0 ? (
-                <div className="grid gap-6">
-                  {posts.map((post) => (
-                    <div
-                      key={post.id}
-                      className="bg-white p-5 rounded-lg shadow-md backdrop-blur-sm bg-opacity-80 hover:shadow-lg transition-all duration-200 cursor-pointer"
-                      onClick={() => handlePostClick(post.id)}
-                    >
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                        <div className="flex-1 mb-4 md:mb-0">
-                          <h3 className="text-lg font-semibold text-gray-900">{post.title || "Untitled"}</h3>
-                          <p className="text-gray-600 text-sm line-clamp-2 mt-1">
-                            {post.content || "No content available"}
-                          </p>
-                          <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
-                            <span>Created: {new Date(post.createdAt).toLocaleString()}</span>
-                            {post.updatedAt && (
-                              <span>Updated: {new Date(post.updatedAt).toLocaleString()}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditPost(post.id);
-                            }}
-                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 shadow-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePost(post.id);
-                            }}
-                            className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-all duration-200 shadow-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-white rounded-lg shadow-md backdrop-blur-sm bg-opacity-80">
-                  <p className="text-gray-600 mb-4">No blog posts yet.</p>
-                  <button
-                    onClick={() => navigate('/posts/new')}
-                    className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-sm"
-                  >
-                    Create Your First Post
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Enhanced Edit Profile Modal */}
-      {editMode && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
+        <button
+            onClick={() => { localStorage.removeItem("token"); navigate("/login"); }}
+            className="text-gray-500 hover:text-red-600 text-sm font-medium transition-colors flex items-center gap-2"
         >
-          <div className="bg-gradient-to-b from-white to-gray-50 rounded-3xl shadow-xl w-full max-w-md p-8 border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-playfair font-bold text-gray-900 tracking-tight">Edit Profile</h2>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setEditMode(false)}
-                className="text-gray-600 hover:text-gray-900 transition-colors duration-300"
-              >
-                ×
-              </motion.button>
+            Sign out
+        </button>
+      </nav>
+
+      <main className="max-w-[740px] mx-auto pt-32 px-6">
+
+        {/* 2. Profile Header */}
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-20"
+        >
+            {/* Avatar */}
+            <div className="relative group shrink-0">
+                <div className="w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden border border-gray-200">
+                    <img
+                        src={user?.profilePicture || `https://ui-avatars.com/api/?name=${user?.username}&background=000000&color=fff`}
+                        alt="Profile"
+                        className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                    />
+                </div>
             </div>
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="username" className="block text-sm font-cormorant font-medium text-gray-700 mb-2">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full p-3 bg-transparent border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-gray-800 font-cormorant text-sm tracking-wide"
-                  placeholder="Your username"
-                />
-              </div>
-              <div>
-                <label htmlFor="bio" className="block text-sm font-cormorant font-medium text-gray-700 mb-2">
-                  Bio
-                </label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  className="w-full p-3 bg-transparent border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-gray-800 font-cormorant text-sm tracking-wide resize-none h-32"
-                  placeholder="Tell us about yourself..."
-                  rows="4"
-                />
-              </div>
-              <div>
-                <label htmlFor="profilePicture" className="block text-sm font-cormorant font-medium text-gray-700 mb-2">
-                  Profile Picture
-                </label>
-                <input
-                  type="file"
-                  id="profilePicture"
-                  name="profilePicture"
-                  onChange={(e) => setFormData({ ...formData, profilePicture: e.target.files[0] })}
-                  className="w-full p-2.5 bg-transparent border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 text-gray-800 font-cormorant text-sm tracking-wide file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-gray-100 file:text-gray-700 file:hover:bg-gray-200 file:transition-all file:duration-300"
-                />
-              </div>
+
+            {/* Info */}
+            <div className="flex-1 text-center md:text-left pt-2">
+                <div className="flex flex-col md:flex-row justify-between items-center mb-4">
+                    <h1 className="text-4xl md:text-5xl font-serif font-bold text-gray-900 tracking-tight leading-none mb-2 md:mb-0">
+                        {user?.username}
+                    </h1>
+
+                    <button
+                        onClick={() => setEditMode(true)}
+                        className="text-xs font-bold uppercase tracking-wider border border-gray-200 rounded-full px-4 py-2 hover:bg-black hover:text-white hover:border-black transition-all"
+                    >
+                        Edit Profile
+                    </button>
+                </div>
+
+                <p className="text-gray-500 text-lg font-serif italic leading-relaxed mb-6 max-w-lg">
+                    {user?.bio || "A quiet observer of the world."}
+                </p>
+
+                {/* Statistics */}
+                <div className="flex items-center justify-center md:justify-start gap-8 border-t border-gray-100 pt-6">
+                    <div>
+                        <span className="text-2xl font-bold font-serif block">{statistics.postCount}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Stories</span>
+                    </div>
+                    <div className="w-px h-8 bg-gray-100" />
+                    <div>
+                        <span className="text-2xl font-bold font-serif block">{statistics.commentCount}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Comments</span>
+                    </div>
+                </div>
             </div>
-            <div className="mt-8 flex justify-end gap-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setEditMode(false)}
-                className="px-6 py-2.5 bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 rounded-full shadow-md hover:shadow-lg hover:from-gray-100 hover:to-gray-200 transition-all duration-300 font-cormorant text-sm font-medium tracking-wide"
-              >
-                Cancel
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleEditProfile}
-                className="px-6 py-2.5 bg-gradient-to-r from-gray-900 to-gray-700 text-white rounded-full shadow-lg hover:shadow-xl hover:from-gray-800 hover:to-gray-600 transition-all duration-300 font-playfair text-sm font-semibold tracking-wide"
-              >
-                Save Changes
-              </motion.button>
-            </div>
-          </div>
         </motion.div>
-      )}
+
+        {/* 3. Content Section */}
+        <div className="mb-12 flex items-center justify-between border-b border-gray-900 pb-4">
+            <h2 className="text-xl font-serif font-bold">Published Stories</h2>
+            <button
+                onClick={() => navigate('/write')}
+                className="flex items-center gap-2 text-sm font-medium hover:text-gray-600 transition-colors"
+            >
+                <Plus size={16} /> New Story
+            </button>
+        </div>
+
+        {/* 4. Posts List */}
+        <div className="space-y-12">
+            {posts.length > 0 ? (
+                posts.map((post, index) => (
+                    <motion.div
+                        key={post.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="group relative"
+                    >
+                        <div className="flex items-baseline gap-4 mb-2">
+                             <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                                {formatDate(post.createdAt)}
+                            </span>
+                            <div className="h-px bg-gray-100 flex-1"></div>
+                        </div>
+
+                        <Link to={`/posts/${post.id}`} className="block group-hover:opacity-70 transition-opacity">
+                            <h3 className="text-2xl md:text-3xl font-serif font-bold text-gray-900 mb-3 leading-tight">
+                                {post.title}
+                            </h3>
+                            <p className="text-gray-500 font-serif text-base line-clamp-2 leading-relaxed max-w-2xl">
+                                {post.content}
+                            </p>
+                        </Link>
+
+                        <div className="mt-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <Link
+                                    to={`/update/${post.id}`}
+                                    className="text-xs font-medium text-gray-400 hover:text-black flex items-center gap-1 transition-colors"
+                                >
+                                    <Edit3 size={12} /> Edit
+                                </Link>
+                                <button
+                                    onClick={(e) => handleDeletePost(e, post.id)}
+                                    className="text-xs font-medium text-gray-400 hover:text-red-600 flex items-center gap-1 transition-colors"
+                                >
+                                    <Trash2 size={12} /> Delete
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                ))
+            ) : (
+                <div className="text-center py-20">
+                    <PenTool className="w-8 h-8 mx-auto text-gray-200 mb-4" />
+                    <p className="text-gray-400 font-serif italic">You haven't written anything yet.</p>
+                </div>
+            )}
+        </div>
+
+      </main>
+
+      {/* 5. Edit Profile Modal */}
+      <AnimatePresence>
+        {editMode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-lg shadow-2xl border border-gray-100 rounded-none relative"
+            >
+              <button
+                onClick={() => setEditMode(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-black transition-colors"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="p-10">
+                 <h3 className="text-2xl font-serif font-bold mb-8 text-center">Update Profile</h3>
+
+                 {/* Image Upload */}
+                 <div className="flex justify-center mb-8">
+                     <div className="relative group cursor-pointer">
+                        <img
+                            src={previewImage || user?.profilePicture || `https://ui-avatars.com/api/?name=${user?.username}&background=000000&color=fff`}
+                            className="w-24 h-24 rounded-full object-cover grayscale"
+                            alt="Preview"
+                        />
+                        <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera className="text-white w-6 h-6" />
+                        </div>
+                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleImageChange} accept="image/*" />
+                     </div>
+                 </div>
+
+                 <div className="space-y-6">
+                     <div>
+                        <label className="block text-xs font-bold text-gray-900 uppercase tracking-widest mb-2">Username</label>
+                        <input
+                            type="text"
+                            value={formData.username}
+                            onChange={(e) => setFormData({...formData, username: e.target.value})}
+                            className="w-full text-lg border-b border-gray-200 focus:border-black outline-none py-2 bg-transparent transition-colors placeholder-gray-300 font-serif"
+                        />
+                     </div>
+
+                     <div>
+                        <label className="block text-xs font-bold text-gray-900 uppercase tracking-widest mb-2">Bio</label>
+                        <textarea
+                            value={formData.bio}
+                            onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                            className="w-full text-base border border-gray-200 p-3 focus:border-black outline-none bg-gray-50 h-32 resize-none font-serif leading-relaxed"
+                            placeholder="Tell your story..."
+                        />
+                     </div>
+
+                     <button
+                        onClick={handleEditProfile}
+                        className="w-full bg-black text-white py-3 text-xs font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors mt-4"
+                     >
+                        Save Changes
+                     </button>
+                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };
