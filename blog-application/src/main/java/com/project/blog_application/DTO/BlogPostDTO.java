@@ -1,6 +1,7 @@
 package com.project.blog_application.DTO;
 
 import com.project.blog_application.entities.BlogPost;
+import com.project.blog_application.services.FileStorageService;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -13,9 +14,9 @@ public class BlogPostDTO implements Serializable {
     private String title;
     private String content;
     private String imageUrl;
-    private Long userId; // Only user ID, not full user object
-    private String username; // Including username for convenience
-    private String email; // Including email for convenience
+    private Long userId;
+    private String username;
+    private String email;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private boolean deleted;
@@ -23,13 +24,15 @@ public class BlogPostDTO implements Serializable {
     public BlogPostDTO() {
     }
 
-
     // Constructor to map BlogPost to BlogPostDTO
-    public BlogPostDTO(BlogPost blogPost)  {
+    public BlogPostDTO(BlogPost blogPost, FileStorageService fileStorageService) {
         this.id = blogPost.getId();
         this.title = blogPost.getTitle();
         this.content = blogPost.getContent();
-        this.imageUrl = buildPublicImageUrl(blogPost.getImageUrl());
+
+        // ✅ CENTRALIZED image URL building
+        this.imageUrl = fileStorageService.buildPublicUrl(blogPost.getImageUrl());
+
         this.userId = blogPost.getUser().getId();
         this.username = blogPost.getUser().getUsername();
         this.email = blogPost.getUser().getEmail();
@@ -117,19 +120,4 @@ public class BlogPostDTO implements Serializable {
     public void setDeleted(boolean deleted) {
         this.deleted = deleted;
     }
-
-    private String buildPublicImageUrl(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-
-        // If already a full path, return as-is (backward compatibility)
-        if (value.startsWith("/uploads/")) {
-            return value;
-        }
-
-        return "/uploads/" + value;
-    }
-
-
 }

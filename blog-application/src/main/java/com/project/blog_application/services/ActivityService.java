@@ -10,44 +10,42 @@ import com.project.blog_application.repository.CommentRepository;
 import com.project.blog_application.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 public class ActivityService {
 
-    @Autowired
-    private BlogPostRepository blogPostRepository;
+    @Autowired private BlogPostRepository blogPostRepository;
+    @Autowired private CommentRepository commentRepository;
+    @Autowired private UserRepository userRepository;
 
-    @Autowired
-    private CommentRepository commentRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
+    @Transactional(readOnly = true) // ✅ Hidden Error 3: Ensures DB session stays open
     public List<RecentActivityDTO> getRecentActivities() {
         List<RecentActivityDTO> activities = new ArrayList<>();
 
-        List<BlogPost> recentBlogPosts = blogPostRepository.findTop10ByOrderByCreatedAtDesc();
-        activities.addAll(recentBlogPosts.stream()
-                .map(post -> new RecentActivityDTO("BlogPost", "New post: " + post.getTitle(), post.getCreatedAt()))
-                .collect(Collectors.toList()));
+        // 1. Fetch Posts
+        blogPostRepository.findTop10ByOrderByCreatedAtDesc().forEach(post ->
+                activities.add(new RecentActivityDTO("BlogPost", "New story: " + post.getTitle(), post.getCreatedAt())));
 
-        List<Comment> recentComments = commentRepository.findTop10ByOrderByCreatedAtDesc();
-        activities.addAll(recentComments.stream()
-                .map(comment -> new RecentActivityDTO("Comment", "New comment by " + comment.getUser().getUsername(), comment.getCreatedAt()))
-                .collect(Collectors.toList()));
+        // 2. Fetch Comments
+        commentRepository.findTop10ByOrderByCreatedAtDesc().forEach(comment -> {
+            String username = (comment.getUser() != null) ? comment.getUser().getUsername() : "Anonymous";
+            activities.add(new RecentActivityDTO("Comment", "New feedback by " + username, comment.getCreatedAt()));
+        });
 
-        List<User> recentUsers = userRepository.findTop10ByOrderByCreatedAtDesc();
-        activities.addAll(recentUsers.stream()
-                .map(user -> new RecentActivityDTO("User", "New user: " + user.getUsername(), user.getCreatedAt()))
-                .collect(Collectors.toList()));
+        // 3. Fetch Users
+        userRepository.findTop10ByOrderByCreatedAtDesc().forEach(user ->
+                activities.add(new RecentActivityDTO("User", "New member: " + user.getUsername(), user.getCreatedAt())));
 
-        // Sort activities by timestamp
-        activities.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
+        // ✅ Hidden Error 1: Null-safe sorting (prevents NullPointerException if timestamp is null)
+        activities.sort(Comparator.comparing(RecentActivityDTO::getTimestamp,
+                Comparator.nullsLast(Comparator.reverseOrder())));
 
-        return activities;
+        return activities.stream().limit(10).collect(Collectors.toList());
     }
 }

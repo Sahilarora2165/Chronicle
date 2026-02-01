@@ -1,12 +1,12 @@
 package com.project.blog_application.DTO;
 
+import java.io.Serializable;
 import java.util.List;
 
-/**
- * DTO for consolidated dashboard statistics.
- * Combines all dashboard data into a single response to reduce API calls.
- */
-public class DashboardStatsDTO {
+
+public class DashboardStatsDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
     private long userCount;
     private long postCount;
     private long commentCount;

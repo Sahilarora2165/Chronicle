@@ -63,6 +63,7 @@ public class SecurityConfig {
                                 "/api/comments/blog/*",
                                 "/api/health",
                                 "/actuator/**",
+                                "/error",
                                 "/uploads/**").permitAll()
                         .requestMatchers(
                                 "/api/posts/upload",

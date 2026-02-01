@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.project.blog_application.services.FileStorageService;
 import com.project.blog_application.DTO.BlogPostDTO;
 import com.project.blog_application.entities.BlogPost;
 import com.project.blog_application.services.LikeService;
@@ -20,10 +21,12 @@ import com.project.blog_application.services.LikeService;
 @RequestMapping("api/likes")
 public class LikeController {
     private final LikeService likeService;
+    private final FileStorageService fileStorageService;
 
     @Autowired
-    public LikeController(LikeService likeService) {
+    public LikeController(LikeService likeService, FileStorageService fileStorageService) {
         this.likeService = likeService;
+        this.fileStorageService = fileStorageService;
     }
 
     @GetMapping("/test")
@@ -55,8 +58,9 @@ public class LikeController {
 
         // Convert List<BlogPost> to List<BlogPostDTO>
         List<BlogPostDTO> likedPostDTOs = likedPosts.stream()
-                .map(BlogPostDTO::new) // Using the constructor you created
+                .map(post -> new BlogPostDTO(post, fileStorageService))
                 .collect(Collectors.toList());
+
 
         return ResponseEntity.ok(likedPostDTOs);
     }

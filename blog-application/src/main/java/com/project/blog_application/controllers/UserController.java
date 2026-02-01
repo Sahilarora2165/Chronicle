@@ -54,8 +54,9 @@ public class UserController {
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         logger.debug("Fetching all users for admin access");
         List<UserDTO> users = userService.getAllUsers().stream()
-                .map(UserDTO::new)
+                .map(user -> new UserDTO(user, fileStorageService))
                 .collect(Collectors.toList());
+
         return ResponseEntity.ok(users);
     }
 
@@ -73,7 +74,8 @@ public class UserController {
         }
 
         System.out.println("User profile picture path: " + user.getProfilePicture()); // Debugging
-        return ResponseEntity.ok(new UserDTO(user));
+        return ResponseEntity.ok(new UserDTO(user, fileStorageService));
+
     }
 
     // ✅ Get user by ID (Admin-only)
@@ -85,7 +87,8 @@ public class UserController {
                 return ResponseEntity.notFound().build();
             }
             logger.info("Retrieved user with ID {}: {}", id, user.getUsername());
-            return ResponseEntity.ok(new UserDTO(user));
+            return ResponseEntity.ok(new UserDTO(user, fileStorageService));
+
         } catch (RuntimeException e) {
             logger.error("Error fetching user with id {}: {}", id, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -102,8 +105,9 @@ public class UserController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         List<BlogPostDTO> blogDTOs = user.getBlogPosts().stream()
-                .map(BlogPostDTO::new) // Convert to DTO
+                .map(post -> new BlogPostDTO(post, fileStorageService))
                 .collect(Collectors.toList());
+
 
         return ResponseEntity.ok(blogDTOs);
     }
@@ -132,7 +136,9 @@ public class UserController {
 
             // Register the user
             User createdUser = userService.registerUser(user, profilePicture);
-            return ResponseEntity.status(HttpStatus.CREATED).body(new UserDTO(createdUser));
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new UserDTO(createdUser, fileStorageService));
+
         } catch (RuntimeException e) {
             logger.error("Registration failed: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -201,7 +207,8 @@ public class UserController {
 
         userRepository.save(targetUser);
         logger.info("✅ User {} updated successfully by {}", targetUser.getUsername(), currentUser.getUsername());
-        return ResponseEntity.ok(new UserDTO(targetUser));
+        return ResponseEntity.ok(new UserDTO(targetUser, fileStorageService));
+
     }
 
     @PutMapping("/me")
@@ -234,7 +241,8 @@ public class UserController {
         }
 
         User updatedUser = userRepository.save(user);
-        return ResponseEntity.ok(new UserDTO(updatedUser));
+        return ResponseEntity.ok(new UserDTO(updatedUser, fileStorageService));
+
     }
 
     // ✅ Delete user account (Self or Admin-only)
@@ -276,7 +284,7 @@ public class UserController {
         }
     }
 
-    @GetMapping("/users/{id}/posts")
+    @GetMapping("/{id}/posts")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<BlogPost>> getUserPosts(@PathVariable Long id) {
         List<BlogPost> posts = userService.getPostsByUserId(id);
