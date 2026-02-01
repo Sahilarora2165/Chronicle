@@ -1,8 +1,11 @@
 package com.project.blog_application.DTO;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
-public class RecentActivityDTO {
+public class RecentActivityDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
     private String type;
     private String description;
     private LocalDateTime timestamp;

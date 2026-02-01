@@ -38,8 +38,13 @@ public class DashboardController {
      */
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<DashboardStatsDTO> getDashboardStats() {
-        DashboardStatsDTO stats = dashboardService.getDashboardStats();
-        return ResponseEntity.ok(stats);
+    public ResponseEntity<?> getDashboardStats() {
+        try {
+            DashboardStatsDTO stats = dashboardService.getDashboardStats();
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            // Return a JSON error that the React frontend can actually read
+            return ResponseEntity.status(500).body("Registry Sync Failed: " + e.getMessage());
+        }
     }
 }

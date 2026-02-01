@@ -2,6 +2,7 @@ package com.project.blog_application.DTO;
 
 import com.project.blog_application.entities.Role;
 import com.project.blog_application.entities.User;
+import com.project.blog_application.services.FileStorageService;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -15,24 +16,20 @@ public class UserDTO implements Serializable {
     private String email;
     private Role role;
     private LocalDateTime createdAt;
-    private String password;
     private String bio;
     private String profilePicture;
 
-    public UserDTO(User user) {
+    public UserDTO(User user, FileStorageService fileStorageService) {
         this.id = user.getId();
-        this.username = user.getUsername().replaceAll("^\"|\"$", "");
+        this.username = user.getUsername();
         this.email = user.getEmail();
         this.role = user.getRole();
         this.createdAt = user.getCreatedAt();
-        this.bio = (user.getBio() != null) ? user.getBio().replaceAll("^\"|\"$", "") : null;
-    
-        // ✅ Convert profilePicture filename into a full URL
-        if (user.getProfilePicture() != null) {
-            this.profilePicture = "http://localhost:8080/uploads/" + user.getProfilePicture();
-        } else {
-            this.profilePicture = null;  // Handle default case
-        }
+        this.bio = user.getBio();
+
+        // ✅ CENTRALIZED image URL handling
+        this.profilePicture =
+                fileStorageService.buildPublicUrl(user.getProfilePicture());
     }
     
 
@@ -75,14 +72,6 @@ public class UserDTO implements Serializable {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public String getBio() {

@@ -67,9 +67,15 @@ public class FileStorageService {
      * Builds a public URL from filename
      */
     public String buildPublicUrl(String filename) {
-        if (filename == null) return null;
+        if (filename == null || filename.isBlank()) return null;
+
+        if (filename.startsWith(publicBasePath)) {
+            return filename; // already public
+        }
+
         return publicBasePath + "/" + filename;
     }
+
 
     // ---------- helpers ----------
 

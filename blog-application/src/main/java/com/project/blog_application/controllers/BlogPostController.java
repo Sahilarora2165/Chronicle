@@ -7,6 +7,7 @@ import com.project.blog_application.DTO.PageResponse;
 import com.project.blog_application.metrics.BlogMetrics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import java.util.List;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -121,7 +122,8 @@ public class BlogPostController {
             logger.info("✅ Blog post created, incrementing metric");
             blogMetrics.incrementPostCreated();
 
-            BlogPostDTO response = new BlogPostDTO(savedPost);
+            BlogPostDTO response = new BlogPostDTO(savedPost, fileStorageService);
+
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IOException e) {
             logger.error("❌ IOException occurred while creating the post", e);
@@ -144,42 +146,49 @@ public class BlogPostController {
             @PathVariable Long id,
             @RequestPart(value = "blogPost", required = false) String blogPostJson,
             @RequestPart(value = "file", required = false) MultipartFile file) {
-        try {
-            BlogPost existingPost = blogPostService.getBlogPostById(id);
-            if (existingPost == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-            }
 
-            // Handle partial updates from JSON if provided
+        try {
+            // 1️⃣ Ensure post exists
+            blogPostService.getBlogPostById(id);
+
+            // 2️⃣ Create PATCH object (DO NOT reuse existing entity)
+            BlogPost patch = new BlogPost();
+
+            // 3️⃣ Handle partial JSON update
             if (blogPostJson != null && !blogPostJson.isEmpty()) {
                 ObjectMapper objectMapper = new ObjectMapper();
-                BlogPost updatedPost = objectMapper.readValue(blogPostJson, BlogPost.class);
+                BlogPost incoming = objectMapper.readValue(blogPostJson, BlogPost.class);
 
-                if (updatedPost.getTitle() != null && !updatedPost.getTitle().isEmpty()) {
-                    existingPost.setTitle(updatedPost.getTitle());
+                if (incoming.getTitle() != null && !incoming.getTitle().isEmpty()) {
+                    patch.setTitle(incoming.getTitle());
                 }
-                if (updatedPost.getContent() != null && !updatedPost.getContent().isEmpty()) {
-                    existingPost.setContent(updatedPost.getContent());
+                if (incoming.getContent() != null && !incoming.getContent().isEmpty()) {
+                    patch.setContent(incoming.getContent());
                 }
             }
 
-            // Handle optional image update
+            // 4️⃣ Handle optional image update
             if (file != null && !file.isEmpty()) {
                 String filename = fileStorageService.store(file);
-                existingPost.setImageUrl(filename);
+                patch.setImageUrl(filename); // filename ONLY
             }
 
-            // This clears caches automatically
-            BlogPost savedPost = blogPostService.updatePost(id, existingPost);
+            // 5️⃣ Delegate update logic to service
+            BlogPost savedPost = blogPostService.updatePost(id, patch);
 
-            BlogPostDTO response = new BlogPostDTO(savedPost);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(
+                    new BlogPostDTO(savedPost, fileStorageService)
+            );
 
+
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         } catch (IOException e) {
             logger.error("❌ Error updating post {}: {}", id, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
+
 
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/{id}")
@@ -193,6 +202,18 @@ public class BlogPostController {
             logger.error("❌ Failed to delete post {}: {}", id, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Delete failed: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<java.util.List<BlogPostDTO>> getPostsByUserId(@PathVariable Long userId) {
+        try {
+            logger.info("📄 GET /api/posts/user/{}", userId);
+            java.util.List<BlogPostDTO> posts = blogPostService.getPostsByUserId(userId);
+            return ResponseEntity.ok(posts);
+        } catch (Exception e) {
+            logger.error("❌ Error fetching posts for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 }

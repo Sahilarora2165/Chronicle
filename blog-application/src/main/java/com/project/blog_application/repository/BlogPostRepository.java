@@ -24,6 +24,8 @@ public interface BlogPostRepository extends JpaRepository<BlogPost, Long> {
     @Query("SELECT b FROM BlogPost b WHERE b.user.id = :userId")
     List<BlogPost> findByUserId(@Param("userId") Long userId);
 
+    List<BlogPost> findByUserIdOrderByCreatedAtDesc(Long userId);
+
     // Find post by content (part of the content)
     List<BlogPost> findByContentContaining(String content);
 

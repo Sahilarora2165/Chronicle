@@ -30,7 +30,6 @@ public class DashboardService {
      * 
      * @return DashboardStatsDTO containing all dashboard data
      */
-    @Cacheable("dashboardStats")
     public DashboardStatsDTO getDashboardStats() {
         long userCount = adminStatsService.getUserCount();
         long postCount = adminStatsService.getPostCount();

@@ -17,9 +17,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addResourceHandlers(@SuppressWarnings("null") ResourceHandlerRegistry registry) {
         Path uploadPath = Paths.get(uploadDir);
         String uploadAbsolutePath = uploadPath.toFile().getAbsolutePath();
-        registry
-            .addResourceHandler("/uploads/**")
-            .addResourceLocations("file:" + uploadAbsolutePath + "/")
-            .setCachePeriod(0); // Disable caching for development
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:/app/uploads/");
     }
 }

@@ -23,11 +23,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     @Query("SELECT c FROM Comment c JOIN FETCH c.blogPost JOIN FETCH c.user")
     @NonNull
-    List<Comment> findAll(); 
+    List<Comment> findAll();
 
-    // Find top 10 comments by creation date
+    @Query("SELECT c FROM Comment c JOIN FETCH c.user JOIN FETCH c.blogPost ORDER BY c.createdAt DESC")
     List<Comment> findTop10ByOrderByCreatedAtDesc();
-
     // Count comments by user ID - Performance optimization to avoid N+1 query problem
     @Query("SELECT COUNT(c) FROM Comment c WHERE c.user.id = :userId")
     Long countByUserId(@Param("userId") Long userId);

@@ -3,8 +3,14 @@ package com.project.blog_application.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.interceptor.SimpleCacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -21,9 +27,47 @@ import java.util.Map;
 
 @Configuration
 @EnableCaching
-public class RedisConfig {
+public class RedisConfig implements CachingConfigurer {
 
-    // ✅ Simple ObjectMapper for date handling (no type metadata needed)
+    private static final Logger logger = LoggerFactory.getLogger(RedisConfig.class);
+
+    /**
+     * CRITICAL: This error handler prevents app crash when Redis is unavailable.
+     * Without this, any cache operation failure will kill the application.
+     *
+     * In production with Redis → caching works normally
+     * In production without Redis → app continues without caching (logs errors)
+     */
+    @Bean
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new CacheErrorHandler() {
+            @Override
+            public void handleCacheGetError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
+                logger.warn("⚠️ Redis GET failed for cache '{}' key '{}' - continuing without cache. Error: {}",
+                        cache.getName(), key, exception.getMessage());
+            }
+
+            @Override
+            public void handleCachePutError(RuntimeException exception, org.springframework.cache.Cache cache, Object key, Object value) {
+                logger.warn("⚠️ Redis PUT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
+                        cache.getName(), key, exception.getMessage());
+            }
+
+            @Override
+            public void handleCacheEvictError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
+                logger.warn("⚠️ Redis EVICT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
+                        cache.getName(), key, exception.getMessage());
+            }
+
+            @Override
+            public void handleCacheClearError(RuntimeException exception, org.springframework.cache.Cache cache) {
+                logger.warn("⚠️ Redis CLEAR failed for cache '{}' - continuing without cache. Error: {}",
+                        cache.getName(), exception.getMessage());
+            }
+        };
+    }
+
     @Bean
     public ObjectMapper redisObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
@@ -51,7 +95,6 @@ public class RedisConfig {
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
 
-        // ✅ Use StringRedisSerializer for both keys AND values (since we're caching JSON strings)
         RedisCacheConfiguration defaultConfig =
                 RedisCacheConfiguration.defaultCacheConfig()
                         .entryTtl(Duration.ofMinutes(10))
@@ -61,25 +104,25 @@ public class RedisConfig {
                         )
                         .serializeValuesWith(
                                 RedisSerializationContext.SerializationPair
-                                        .fromSerializer(new StringRedisSerializer())  // ✅ Changed to String
+                                        .fromSerializer(new StringRedisSerializer())
                         )
                         .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
 
-        // ✅ Individual post cache - 30 minutes
+        // Individual post cache - 30 minutes
         cacheConfigurations.put(
                 "blogPost",
                 defaultConfig.entryTtl(Duration.ofMinutes(30))
         );
 
-        // ✅ Paginated list cache - 5 minutes
+        // Paginated list cache - 5 minutes
         cacheConfigurations.put(
                 "blogPostsPageJson",
                 defaultConfig.entryTtl(Duration.ofMinutes(5))
         );
 
-        // ✅ Other search caches - 5 minutes
+        // Other search caches - 5 minutes
         cacheConfigurations.put(
                 "blogPostsByUser",
                 defaultConfig.entryTtl(Duration.ofMinutes(5))
@@ -92,6 +135,26 @@ public class RedisConfig {
 
         cacheConfigurations.put(
                 "blogPostsByKeyword",
+                defaultConfig.entryTtl(Duration.ofMinutes(5))
+        );
+
+        cacheConfigurations.put(
+                "userCount",
+                defaultConfig.entryTtl(Duration.ofMinutes(5))
+        );
+
+        cacheConfigurations.put(
+                "postCount",
+                defaultConfig.entryTtl(Duration.ofMinutes(5))
+        );
+
+        cacheConfigurations.put(
+                "commentCount",
+                defaultConfig.entryTtl(Duration.ofMinutes(5))
+        );
+
+        cacheConfigurations.put(
+                "dashboardStats",
                 defaultConfig.entryTtl(Duration.ofMinutes(5))
         );
 

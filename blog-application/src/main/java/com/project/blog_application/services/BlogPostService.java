@@ -61,7 +61,7 @@ public class BlogPostService {
 
         List<BlogPostListDTO> dtoList = blogPosts.getContent()
                 .stream()
-                .map(BlogPostListDTO::new)
+                .map(post -> new BlogPostListDTO(post, fileStorageService))
                 .toList();
 
         PageResponse<BlogPostListDTO> response = new PageResponse<>(
@@ -74,21 +74,21 @@ public class BlogPostService {
         return objectMapper.writeValueAsString(response);
     }
 
-    // ✅ BEST PRACTICE: Cache JSON string for individual post
+    // BEST PRACTICE: Cache JSON string for individual post
     @Cacheable(value = "blogPost", key = "#id")
     public String getBlogPostByIdJson(Long id) throws JsonProcessingException {
-        logger.info("🔴 CACHE MISS - Fetching blog post {} from DB", id);
+        logger.info("CACHE MISS - Fetching blog post {} from DB", id);
         blogMetrics.incrementCacheMiss();
 
         Optional<BlogPost> post = blogPostRepository.findByIdWithUser(id);
         BlogPost blogPost = post.orElseThrow(() ->
                 new ResourceNotFoundException("Blog post not found with id: " + id));
 
-        BlogPostDTO dto = new BlogPostDTO(blogPost);
+        BlogPostDTO dto = new BlogPostDTO(blogPost, fileStorageService);
         return objectMapper.writeValueAsString(dto);
     }
 
-    // ✅ Public method that deserializes cached JSON
+    // Public method that deserializes cached JSON
     public BlogPostDTO getBlogPostDTOById(Long id) throws JsonProcessingException {
         String json = getBlogPostByIdJson(id);
         return objectMapper.readValue(json, BlogPostDTO.class);
@@ -103,22 +103,24 @@ public class BlogPostService {
 
     // Cache search by title - returns DTOs
     public List<BlogPostDTO> searchByTitleDTO(String title) {
-        logger.info("🔍 Cache MISS - Searching posts by title '{}' from DB", title);
+        logger.info("Cache MISS - Searching posts by title '{}' from DB", title);
 
         List<BlogPost> posts = blogPostRepository.findByTitleContaining(title);
         return posts.stream()
-                .map(BlogPostDTO::new)
+                .map(post -> new BlogPostDTO(post, fileStorageService))
                 .collect(Collectors.toList());
+
     }
 
     // Cache posts by user ID - returns DTOs
     public List<BlogPostDTO> searchByUserIdDTO(Long userId) {
-        logger.info("🔍 Cache MISS - Fetching posts for user {} from DB", userId);
+        logger.info("Cache MISS - Fetching posts for user {} from DB", userId);
 
         List<BlogPost> posts = blogPostRepository.findByUserId(userId);
         return posts.stream()
-                .map(BlogPostDTO::new)
+                .map(post -> new BlogPostDTO(post, fileStorageService))
                 .collect(Collectors.toList());
+
     }
 
     // Cache search by keyword - returns DTOs
@@ -127,8 +129,9 @@ public class BlogPostService {
 
         List<BlogPost> posts = blogPostRepository.findByTitleOrContentContaining(keyword);
         return posts.stream()
-                .map(BlogPostDTO::new)
+                .map(post -> new BlogPostDTO(post, fileStorageService))
                 .collect(Collectors.toList());
+
     }
 
     // Non-cached versions for backward compatibility
@@ -144,43 +147,76 @@ public class BlogPostService {
         return blogPostRepository.findByTitleOrContentContaining(keyword);
     }
 
-    // ✅ Clear all caches when creating post
-    @CacheEvict(value = {"blogPost", "blogPostsPageJson"}, allEntries = true)
+    // Clear all caches when creating post
+    @CacheEvict(value = {
+            "blogPost",
+            "blogPostsPageJson",
+            "userCount",
+            "postCount",
+            "commentCount",
+            "dashboardStats"
+    }, allEntries = true)
     public BlogPost createPost(BlogPost blogPost, User user) {
-        logger.info("✅ Creating new blog post and EVICTING all caches");
+        logger.info("Creating new blog post and EVICTING all caches");
         blogPost.setUser(user);
         return blogPostRepository.save(blogPost);
     }
 
-    // ✅ Clear individual post cache + all list caches when updating
+    // Clear individual post cache + all list caches when updating
     @CacheEvict(value = {"blogPost", "blogPostsPageJson"}, allEntries = true)
-    public BlogPost updatePost(Long id, BlogPost updatedPost) {
-        logger.info("✅ Updating blog post {} and EVICTING all caches", id);
+    public BlogPost updatePost(Long id, BlogPost patch) {
 
-        BlogPost existingPost = getBlogPostById(id);
+        logger.info(" Updating blog post {} and EVICTING all caches", id);
 
-        // Update only provided fields
-        if (updatedPost.getTitle() != null && !updatedPost.getTitle().isEmpty()) {
-            existingPost.setTitle(updatedPost.getTitle());
+        // 1 Load managed entity (single source of truth)
+        BlogPost existing = getBlogPostById(id);
+
+        // 2 Update title if present
+        if (patch.getTitle() != null && !patch.getTitle().isEmpty()) {
+            existing.setTitle(patch.getTitle());
         }
-        if (updatedPost.getContent() != null && !updatedPost.getContent().isEmpty()) {
-            existingPost.setContent(updatedPost.getContent());
+
+        // 3 Update content if present
+        if (patch.getContent() != null && !patch.getContent().isEmpty()) {
+            existing.setContent(patch.getContent());
         }
-        if (updatedPost.getImageUrl() != null && !updatedPost.getImageUrl().isEmpty()) {
-            // Delete old image if exists
-            if (existingPost.getImageUrl() != null && !existingPost.getImageUrl().isEmpty()) {
-                fileStorageService.delete(existingPost.getImageUrl());
+
+        // 4 Update image if present
+        if (patch.getImageUrl() != null && !patch.getImageUrl().isEmpty()) {
+
+            // Delete old image safely
+            if (existing.getImageUrl() != null && !existing.getImageUrl().isEmpty()) {
+                fileStorageService.delete(existing.getImageUrl());
             }
-            existingPost.setImageUrl(updatedPost.getImageUrl());
+
+            // Store ONLY filename
+            existing.setImageUrl(patch.getImageUrl());
         }
 
-        return blogPostRepository.save(existingPost);
+        // 5️⃣ Persist clean state
+        return blogPostRepository.save(existing);
     }
 
-    // ✅ Clear ALL caches when deleting
-    @CacheEvict(value = {"blogPost", "blogPostsPageJson"}, allEntries = true)
+    public List<BlogPostDTO> getPostsByUserId(Long userId) {
+        // 1. Fetch posts from Repo (assuming you have a findByUserId in Repository)
+        List<BlogPost> posts = blogPostRepository.findByUserIdOrderByCreatedAtDesc(userId);
+
+        // 2. Convert to DTOs
+        return posts.stream()
+                .map(post -> new BlogPostDTO(post, fileStorageService))
+                .collect(Collectors.toList());
+    }
+
+
+    // Clear ALL caches when deleting
+    @CacheEvict(value = {
+            "blogPost",
+            "blogPostsPageJson",
+            "postCount",
+            "dashboardStats"
+    }, allEntries = true)
     public void deletePost(Long id) {
-        logger.info("✅ Deleting blog post {} and EVICTING all caches", id);
+        logger.info("Deleting blog post {} and EVICTING all caches", id);
 
         BlogPost existingPost = getBlogPostById(id);
 
