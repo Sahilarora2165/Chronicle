@@ -31,13 +31,6 @@ public class RedisConfig implements CachingConfigurer {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisConfig.class);
 
-    /**
-     * CRITICAL: This error handler prevents app crash when Redis is unavailable.
-     * Without this, any cache operation failure will kill the application.
-     *
-     * In production with Redis → caching works normally
-     * In production without Redis → app continues without caching (logs errors)
-     */
     @Bean
     @Override
     public CacheErrorHandler errorHandler() {

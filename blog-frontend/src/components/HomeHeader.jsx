@@ -144,7 +144,7 @@ const HomeHeader = ({ onSearch }) => {
                                                 <div className="px-5 py-3 border-b border-gray-50">
                                                     <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Signed in as</p>
                                                     <p className="text-sm font-bold text-gray-900 truncate font-serif">
-                                                        @{localStorage.getItem("username") || "User"}
+                                                        {localStorage.getItem("username") || "User"}
                                                     </p>
                                                 </div>
 

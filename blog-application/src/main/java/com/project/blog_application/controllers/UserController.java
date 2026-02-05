@@ -43,13 +43,8 @@ public class UserController {
         this.userService = userService;
     }
 
-    // ✅ Test Endpoint (Public)
-    // @GetMapping("/test")
-    // public String test() {
-    // return "Hello from UserController";
-    // }
 
-    // ✅ Get all users (Admin-only)
+    // Get all users (Admin-only)
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         logger.debug("Fetching all users for admin access");
@@ -78,7 +73,7 @@ public class UserController {
 
     }
 
-    // ✅ Get user by ID (Admin-only)
+    // Get user by ID (Admin-only)
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         try {
@@ -112,7 +107,7 @@ public class UserController {
         return ResponseEntity.ok(blogDTOs);
     }
 
-    // ✅ Register a new user (Public)
+    // Register a new user (Public)
     @PostMapping("/register")
     public ResponseEntity<Object> registerUser(
             @RequestParam("username") String username,
@@ -145,7 +140,7 @@ public class UserController {
         }
     }
 
-    // ✅ Authenticate user (Public)
+    // Authenticate user (Public)
     @PostMapping("/login")
     public ResponseEntity<String> loginUser(@RequestBody User loginUser) {
         logger.info("Login attempt for username: {}", loginUser.getUsername());
@@ -206,7 +201,7 @@ public class UserController {
         }
 
         userRepository.save(targetUser);
-        logger.info("✅ User {} updated successfully by {}", targetUser.getUsername(), currentUser.getUsername());
+        logger.info("User {} updated successfully by {}", targetUser.getUsername(), currentUser.getUsername());
         return ResponseEntity.ok(new UserDTO(targetUser, fileStorageService));
 
     }
@@ -225,7 +220,7 @@ public class UserController {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // ✅ Update only provided fields
+        // Update only provided fields
         if (username != null) {
             user.setUsername(username);
         }
@@ -233,7 +228,7 @@ public class UserController {
             user.setBio(bio);
         }
 
-        // ✅ Handle Profile Picture Upload
+        // Handle Profile Picture Upload
         if (profilePicture != null && !profilePicture.isEmpty()) {
             String profilePicturePath = fileStorageService.store(profilePicture);
 
@@ -245,7 +240,7 @@ public class UserController {
 
     }
 
-    // ✅ Delete user account (Self or Admin-only)
+    // Delete user account (Self or Admin-only)
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
         try {

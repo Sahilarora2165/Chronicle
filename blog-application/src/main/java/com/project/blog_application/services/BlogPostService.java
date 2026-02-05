@@ -47,11 +47,8 @@ public class BlogPostService {
         this.objectMapper = objectMapper;
     }
 
-    // ✅ BEST PRACTICE: Cache JSON string for paginated posts
-    @Cacheable(
-            value = "blogPostsPageJson",
-            key = "#pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort.toString()"
-    )
+    // Cache JSON string for paginated posts
+    @Cacheable(value = "blogPostsPageJson", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     public String getAllBlogPostsJson(Pageable pageable) throws JsonProcessingException {
         logger.info("🔴 CACHE MISS - Fetching paginated posts from DB (page: {}, size: {})",
                 pageable.getPageNumber(), pageable.getPageSize());
@@ -68,13 +65,16 @@ public class BlogPostService {
                 dtoList,
                 blogPosts.getNumber(),
                 blogPosts.getSize(),
-                blogPosts.getTotalElements()
+                blogPosts.getTotalElements(),
+                blogPosts.getTotalPages(),
+                blogPosts.isLast(),
+                blogPosts.isFirst()
         );
 
         return objectMapper.writeValueAsString(response);
     }
 
-    // BEST PRACTICE: Cache JSON string for individual post
+    // Cache JSON string for individual post
     @Cacheable(value = "blogPost", key = "#id")
     public String getBlogPostByIdJson(Long id) throws JsonProcessingException {
         logger.info("CACHE MISS - Fetching blog post {} from DB", id);

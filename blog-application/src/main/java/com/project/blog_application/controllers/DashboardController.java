@@ -30,12 +30,6 @@ public class DashboardController {
         this.dashboardService = dashboardService;
     }
 
-    /**
-     * Get consolidated dashboard statistics.
-     * Returns user count, post count, comment count, and recent activities in a single response.
-     * 
-     * @return DashboardStatsDTO containing all dashboard data
-     */
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getDashboardStats() {

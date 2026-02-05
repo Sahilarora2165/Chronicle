@@ -24,7 +24,7 @@ public class ActivityService {
     @Autowired private CommentRepository commentRepository;
     @Autowired private UserRepository userRepository;
 
-    @Transactional(readOnly = true) // ✅ Hidden Error 3: Ensures DB session stays open
+    @Transactional(readOnly = true) //  Ensures DB session stays open
     public List<RecentActivityDTO> getRecentActivities() {
         List<RecentActivityDTO> activities = new ArrayList<>();
 
@@ -42,7 +42,7 @@ public class ActivityService {
         userRepository.findTop10ByOrderByCreatedAtDesc().forEach(user ->
                 activities.add(new RecentActivityDTO("User", "New member: " + user.getUsername(), user.getCreatedAt())));
 
-        // ✅ Hidden Error 1: Null-safe sorting (prevents NullPointerException if timestamp is null)
+        //  Null-safe sorting (prevents NullPointerException if timestamp is null)
         activities.sort(Comparator.comparing(RecentActivityDTO::getTimestamp,
                 Comparator.nullsLast(Comparator.reverseOrder())));
 

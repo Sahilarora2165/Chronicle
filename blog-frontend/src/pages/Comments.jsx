@@ -2,50 +2,27 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../axios";
 
-/**
- * Admin comments page for the admin dashboard, displaying all comments with actions.
- * Features a minimalist, aesthetic, and centered UI design.
- * Requires a valid JWT token stored in localStorage for authenticated API calls.
- */
 const Comments = () => {
     const [comments, setComments] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
+
     const navigate = useNavigate();
     const token = localStorage.getItem("token");
 
     useEffect(() => {
         if (!token) {
-            setError("No authentication token found. Please log in.");
-            setLoading(false);
             navigate("/login");
             return;
         }
 
         const fetchComments = async () => {
-            setLoading(true);
             try {
-                const response = await api.get(`/comments`);
-                setComments(response.data.content || response.data); // Handle both Page and List responses
-                setError("");
-                console.log("Fetched comments:", response.data); // Add this line to log the response data
-            } catch (err) {
-                let errorMessage = "Failed to load comments";
-                if (err.response) {
-                    errorMessage = `Error: ${err.response.status} - ${err.response.data.message || "Unauthorized or server error"}`;
-                    if (err.response.status === 401) {
-                        localStorage.removeItem("token");
-                        navigate("/login");
-                        errorMessage = "Session expired. Please log in again.";
-                    }
-                } else if (err.request) {
-                    errorMessage = "Network error. Please check your connection.";
-                } else {
-                    errorMessage = `Unexpected error: ${err.message}`;
-                }
-                setError(errorMessage);
-                console.error("Error fetching comments:", err);
+                const res = await api.get("/comments");
+                setComments(res.data.content || res.data);
+            } catch {
+                setError("Unable to synchronize comment registry.");
             } finally {
                 setLoading(false);
             }
@@ -54,133 +31,127 @@ const Comments = () => {
         fetchComments();
     }, [token, navigate]);
 
-    // Filter comments based on search term (client-side filtering)
-    const filteredComments = comments.filter(comment =>
-        comment.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        comment.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        comment.blogPost?.title.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredComments = comments.filter(c =>
+        c.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.username && c.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (c.blogPostTitle && c.blogPostTitle.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    // Handle comment deletion (hard delete)
-    const handleDelete = async (commentId) => {
-        if (window.confirm("Are you sure you want to delete this comment?")) {
-            if (!token || token.trim() === "") {
-                setError("No valid authentication token found. Please log in.");
-                navigate("/login");
-                return;
-            }
+    const handleDelete = async (id) => {
+        if (!window.confirm("Permanent removal of this comment?")) return;
 
-            console.log("Deleting comment with ID:", commentId);
-            console.log("Token:", token);
-
-            try {
-                await api.delete(`/comments/${commentId}`);
-                setComments(comments.filter(comment => comment.id !== commentId));
-                setError("");
-            } catch (err) {
-                let errorMessage = "Failed to delete comment";
-                if (err.response) {
-                    errorMessage = `Error: ${err.response.status} - ${err.response.data.message || "Unauthorized or server error"}`;
-                    console.log("Delete error response:", err.response);
-                } else if (err.request) {
-                    errorMessage = "Network error. Please check your connection.";
-                } else {
-                    errorMessage = `Unexpected error: ${err.message}`;
-                }
-                setError(errorMessage);
-                console.error("Error deleting comment:", err);
-            }
+        try {
+            await api.delete(`/comments/${id}`);
+            setComments(prev => prev.filter(c => c.id !== id));
+        } catch {
+            setError("Decline: Could not delete record.");
         }
     };
 
-    if (loading) {
-        return (
-            <div className="h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                <div className="text-center">
-                    <div className="loading loading-spinner loading-lg text-gray-500"></div>
-                    <p className="text-gray-500 mt-2">Loading comments...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                <div className="text-center">
-                    <p className="text-red-500 mb-4">{error}</p>
-                    <button
-                        onClick={() => fetchComments()}
-                        className="bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-600 transition-colors"
-                    >
-                        Retry
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <LoadingScreen />;
 
     return (
-        <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900">Comment Management Hub</h1>
-                    <p className="text-md text-gray-600">Manage all comments across posts</p>
-                </div>
-                <div className="w-1/3">
-                    <input
-                        type="text"
-                        placeholder="Search by content, author, or post title..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm hover:shadow-md transition-all duration-200"
-                    />
-                </div>
-            </div>
+        <div className="h-screen bg-[#fafafa] overflow-hidden font-sans text-slate-800">
+            <div className="h-full px-8 md:px-16 py-10 flex flex-col">
 
-            <div className="flex-1 overflow-auto">
-                <div className="space-y-4">
-                    {filteredComments.length > 0 ? (
-                        filteredComments.map(comment => (
-                            <div
-                                key={comment.id}
-                                className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-between"
-                            >
-                                <div className="flex-1">
-                                    <Link to={`/admin/comments/${comment.id}`} className="text-gray-900 hover:text-blue-600">
-                                        <p className="text-lg font-semibold">{comment.content}</p>
-                                        <p className="text-gray-600 text-sm">Post: {comment.blogPostTitle ? comment.blogPostTitle : "Unknown Post"}</p>
-                                        <p className="text-gray-600 text-sm">By {comment.username || comment.email || "Anonymous"}</p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Created: {comment.createdAt ? new Date(comment.createdAt).toLocaleString() : "Unknown"}
-                                        </p>
-                                    </Link>
-                                </div>
-                                <div className="flex space-x-3">
-                                    <button
-                                        onClick={() => navigate(`/admin/comments/edit/${comment.id}`)}
-                                        className="relative bg-gradient-to-r from-gray-200 to-white text-black px-3 py-1 rounded-full font-semibold text-xs uppercase tracking-wider shadow-md hover:shadow-xl hover:bg-gradient-to-r hover:from-blue-800 hover:to-blue-600 hover:text-white transform hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-300"
-                                    >
-                                        <span className="relative z-10">Edit</span>
-                                        <div className="absolute inset-0 rounded-full bg-blue-800 opacity-0 hover:opacity-10 transition-opacity duration-300"></div>
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(comment.id)}
-                                        className="relative bg-gradient-to-r from-gray-200 to-white text-black px-3 py-1 rounded-full font-semibold text-xs uppercase tracking-wider shadow-md hover:shadow-xl hover:bg-gradient-to-r hover:from-red-800 hover:to-red-600 hover:text-white transform hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-300"
-                                    >
-                                        <span className="relative z-10">Delete</span>
-                                        <div className="absolute inset-0 rounded-full bg-red-800 opacity-0 hover:opacity-10 transition-opacity duration-300"></div>
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-gray-600 text-center">No comments found.</p>
+                {/* Header */}
+                <header className="border-b border-slate-200 pb-6 mb-6 flex flex-col md:flex-row justify-between items-end">
+                    <div>
+                        <h1 className="text-4xl font-light tracking-tight text-slate-900">
+                            Audience
+                            <span className="text-slate-300 mx-2">/</span>
+                            <span className="font-medium text-blue-600">Feedback</span>
+                        </h1>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 mt-2">
+                            Global Comment Registry
+                        </p>
+                    </div>
+
+                    <div className="w-full md:w-80 mt-6 md:mt-0">
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Filter by content or author…"
+                            className="w-full bg-white border-b border-slate-200 py-2 text-sm focus:border-blue-500 outline-none placeholder:text-slate-300 italic"
+                        />
+                    </div>
+                </header>
+
+                {error && (
+                    <div className="bg-red-50 text-red-500 p-3 mb-4 text-xs border border-red-100 italic text-center uppercase tracking-widest">
+                        {error}
+                    </div>
+                )}
+
+                {/* Comment List */}
+                <section className="flex-1 overflow-y-auto pr-2 space-y-4">
+                    {filteredComments.length === 0 && (
+                        <div className="py-20 text-center">
+                            <p className="text-sm text-slate-300 italic uppercase tracking-widest">
+                                No matching feedback found
+                            </p>
+                        </div>
                     )}
-                </div>
+
+                    {filteredComments.map(comment => (
+                        <div
+                            key={comment.id}
+                            className="group bg-white border border-slate-100 rounded-2xl p-6 md:p-8 hover:shadow-sm transition flex flex-col md:flex-row justify-between items-start md:items-center"
+                        >
+                            <div className="flex-1 pr-8">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                        {comment.username || "Anonymous"}
+                                    </span>
+                                    <span className="text-[10px] text-slate-300 uppercase">
+                                        {comment.createdAt &&
+                                            new Date(comment.createdAt).toLocaleDateString()}
+                                    </span>
+                                </div>
+
+                                <Link to={`/admin/comments/${comment.id}`}>
+                                    <p className="text-lg text-slate-700 leading-snug hover:text-blue-600 transition">
+                                        “{comment.content}”
+                                    </p>
+                                </Link>
+
+                                <p className="text-[11px] text-slate-400 mt-3 italic">
+                                    On Post:{" "}
+                                    <span className="text-slate-500 font-medium">
+                                        {comment.blogPostTitle || "General Discussion"}
+                                    </span>
+                                </p>
+                            </div>
+
+                            <div className="flex gap-6 mt-6 md:mt-0 opacity-0 group-hover:opacity-100 transition">
+                                <button
+                                    onClick={() =>
+                                        navigate(`/admin/comments/edit/${comment.id}`)
+                                    }
+                                    className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-blue-600"
+                                >
+                                    Modify
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(comment.id)}
+                                    className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-red-500"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </section>
             </div>
         </div>
     );
 };
+
+const LoadingScreen = () => (
+    <div className="h-screen flex items-center justify-center bg-[#fafafa]">
+        <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+    </div>
+);
 
 export default Comments;

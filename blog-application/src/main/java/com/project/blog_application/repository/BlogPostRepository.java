@@ -38,7 +38,11 @@ public interface BlogPostRepository extends JpaRepository<BlogPost, Long> {
     List<BlogPost> findAllWithUser();
 
     // Add pagination support for all posts with user data
-    @Query("SELECT p FROM BlogPost p JOIN FETCH p.user")
+    // Provide an explicit countQuery to keep totalElements accurate with pagination.
+    @Query(
+            value = "SELECT p FROM BlogPost p JOIN FETCH p.user",
+            countQuery = "SELECT COUNT(p) FROM BlogPost p"
+    )
     Page<BlogPost> findAllWithUser(Pageable pageable);
 
     @Query("SELECT p FROM BlogPost p JOIN FETCH p.user WHERE p.id = :id")

@@ -28,6 +28,24 @@ public class PageResponse<T> implements Serializable {
         this.first = pageNumber == 0;
     }
 
+    public PageResponse(
+            List<T> content,
+            int pageNumber,
+            int pageSize,
+            long totalElements,
+            int totalPages,
+            boolean last,
+            boolean first
+    ) {
+        this.content = content;
+        this.pageNumber = pageNumber;
+        this.pageSize = pageSize;
+        this.totalElements = totalElements;
+        this.totalPages = totalPages;
+        this.last = last;
+        this.first = first;
+    }
+
     // Getters and setters
     public List<T> getContent() {
         return content;

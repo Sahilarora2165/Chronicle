@@ -49,32 +49,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             
             try {
                 String email = jwtUtil.extractEmail(token);
-                logger.info("✅ Email extracted: {}", email);
+                logger.info("Email extracted: {}", email);
                 
                 boolean valid = jwtUtil.validateToken(token, email);
-                logger.info("✅ Token valid: {}", valid);
+                logger.info("Token valid: {}", valid);
                 
                 if (valid && email != null) {
                     UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                    logger.info("✅ User loaded: {}, Authorities: {}", userDetails.getUsername(), userDetails.getAuthorities());
+                    logger.info("User loaded: {}, Authorities: {}", userDetails.getUsername(), userDetails.getAuthorities());
                     
                     UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(auth);
-                    logger.info("✅ Authentication set successfully for {} {}", method, uri);
+                    logger.info("Authentication set successfully for {} {}", method, uri);
                 } else {
-                    logger.warn("⚠️ Invalid token for {} {} - letting Spring Security handle it", method, uri);
-                    // ✅ DON'T send error - let Spring Security decide if endpoint needs auth
+                    logger.warn("Invalid token for {} {} - letting Spring Security handle it", method, uri);
+
                 }
             } catch (Exception e) {
-                logger.error("❌ Token processing error for {} {}: {}", method, uri, e.getMessage());
-                // ✅ DON'T send error - let Spring Security handle unauthorized access
+                logger.error("Token processing error for {} {}: {}", method, uri, e.getMessage());
+
             }
         } else {
-            logger.info("ℹ️ No Bearer token for {} {} - anonymous request", method, uri);
+            logger.info("No Bearer token for {} {} - anonymous request", method, uri);
         }
 
-        // ✅ ALWAYS continue the filter chain - let Spring Security decide what to do
+
         chain.doFilter(request, response);
     }
 }
