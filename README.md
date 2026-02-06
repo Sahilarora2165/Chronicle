@@ -77,14 +77,14 @@ The backend was optimized to deliver **sub-millisecond responses** under load.
 
 ## 📸 Screenshots
 
+### 🔐 Authentication Flow (Login)
+![Login](./screenshots/login.png)
+
 ### 🏠 Home Feed (Infinite Scroll)
 ![Home Feed](./screenshots/home-feed.png)
 
 ### ✍️ Create / Edit Post
 ![Create Post](./screenshots/create-post.png)
-
-### 🔐 Authentication Flow (Login)
-![Login](./screenshots/login.png)
 
 ### 📊 Admin DashBoard
 ![Grafana Dashboard](./screenshots/admin-dashboard.png)
