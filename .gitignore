@@ -44,3 +44,4 @@ Thumbs.db
 # Do NOT ignore these. You want these on GitHub!
 DOCKER_SETUP.md
 PERFORMANCE_OPTIMIZATIONS.md
+REDIS_IMPLEMENTATION_INTERVIEW_GUIDE.md
