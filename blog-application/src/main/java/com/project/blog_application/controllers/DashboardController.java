@@ -9,16 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Controller for consolidated dashboard statistics.
- * Provides a single endpoint that returns all dashboard data,
- * reducing frontend API calls from 4 to 1.
- * 
- * Performance improvements:
- * - Single network request instead of 4 parallel requests
- * - Cached response reduces database load
- * - Smaller overall network overhead
- */
+
 @RestController
 @RequestMapping("/api/dashboard")
 @CrossOrigin
@@ -30,12 +21,6 @@ public class DashboardController {
         this.dashboardService = dashboardService;
     }
 
-    /**
-     * Get consolidated dashboard statistics.
-     * Returns user count, post count, comment count, and recent activities in a single response.
-     * 
-     * @return DashboardStatsDTO containing all dashboard data
-     */
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getDashboardStats() {

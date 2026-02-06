@@ -53,9 +53,6 @@ public class CommentService {
                 .collect(Collectors.toList());
     }
 
-    // Get all comments for a blog post
-    // filepath: /Users/sahilarora/Projects/Sprig Boot
-    // Projects/blog-application/src/main/java/com/project/blog_application/services/CommentService.java
     public List<Comment> getCommentsByBlogPost(Long blogPostId) {
         return commentRepository.findByBlogPostId(blogPostId);
     }

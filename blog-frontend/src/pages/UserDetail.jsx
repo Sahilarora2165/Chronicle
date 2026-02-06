@@ -11,35 +11,14 @@ const UserDetail = () => {
     const token = localStorage.getItem("token");
 
     useEffect(() => {
-        if (!token) {
-            setError("No authentication token found. Please log in.");
-            setLoading(false);
-            navigate("/login");
-            return;
-        }
+        if (!token) { navigate("/login"); return; }
 
         const fetchUser = async () => {
-            setLoading(true);
             try {
                 const response = await api.get(`/users/${id}`);
                 setUser(response.data);
-                setError("");
             } catch (err) {
-                let errorMessage = "Failed to load user";
-                if (err.response) {
-                    errorMessage = `Error: ${err.response.status} - ${err.response.data.message || "Unauthorized or server error"}`;
-                    if (err.response.status === 401) {
-                        localStorage.removeItem("token");
-                        navigate("/login");
-                        errorMessage = "Session expired. Please log in again.";
-                    }
-                } else if (err.request) {
-                    errorMessage = "Network error. Please check your connection.";
-                } else {
-                    errorMessage = `Unexpected error: ${err.message}`;
-                }
-                setError(errorMessage);
-                console.error("Error fetching user:", err);
+                setError("ACCESS_DENIED: USER_RECORD_NOT_FOUND");
             } finally {
                 setLoading(false);
             }
@@ -48,64 +27,91 @@ const UserDetail = () => {
         fetchUser();
     }, [id, token, navigate]);
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold text-gray-800 mb-4">USER DETAILS</h1>
-                    <div className="loading loading-spinner loading-lg text-gray-500"></div>
-                    <p className="text-gray-500 mt-2">Loading user details...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                    <p className="text-red-500 mb-4">{error}</p>
-                    <button
-                        onClick={() => fetchUser()}
-                        className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                    >
-                        Retry
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <LoadingScreen />;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-            <div className="w-full max-w-2xl">
-                <h1 className="text-3xl font-bold text-gray-800 text-center mb-8">USER DETAILS</h1>
-                <div className="bg-white p-8 rounded-2xl shadow-md">
-                    <div className="space-y-4">
-                        <p className="text-gray-800"><strong>Username:</strong> {user.username}</p>
-                        <p className="text-gray-600"><strong>Email:</strong> {user.email}</p>
-                        <p className="text-gray-600"><strong>Role:</strong> {user.role}</p>
-                        <p className="text-gray-500"><strong>Joined:</strong> {new Date(user.createdAt).toLocaleString()}</p>
-                        {user.lastLogin && <p className="text-gray-500"><strong>Last Login:</strong> {new Date(user.lastLogin).toLocaleString()}</p>}
+        <div className="min-h-screen bg-white text-black font-sans flex flex-col">
+            <div className="w-full px-6 md:px-12 py-8 md:py-12 flex flex-col min-h-screen">
+
+                {/* Header: Full Width & Sleek */}
+                <header className="mb-20 border-b-2 border-black pb-6 flex justify-between items-end">
+                    <div>
+                        <h1 className="text-5xl font-black tracking-tighter uppercase italic leading-none">
+                            User Profile
+                        </h1>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-gray-400 mt-4">
+                            Registry Entry // UUID: {id}
+                        </p>
                     </div>
-                    <div className="mt-6 flex space-x-4 justify-center">
-                        <button
-                            onClick={() => navigate(`/admin/users/edit/${user.id}`)}
-                            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                        >
-                            Edit
-                        </button>
-                        <button
-                            onClick={() => navigate("/admin/users")}
-                            className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                        >
-                            Back
-                        </button>
+                    <button
+                        onClick={() => navigate("/admin/users")}
+                        className="font-mono text-[10px] font-bold uppercase tracking-widest hover:italic border-b border-black pb-1 mb-2"
+                    >
+                        [ Return to Index ]
+                    </button>
+                </header>
+
+                {error && (
+                    <div className="bg-black text-white p-6 mb-12 font-mono text-xs uppercase tracking-widest text-center">
+                        {error}
                     </div>
-                </div>
+                )}
+
+                {user && (
+                    <div className="flex-1 flex flex-col">
+                        {/* Primary Identity Display */}
+                        <section className="mb-20">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-2">Primary Identifier</p>
+                            <h2 className="text-6xl md:text-8xl font-black tracking-tighter uppercase break-all leading-tight">
+                                {user.username}
+                            </h2>
+                        </section>
+
+                        {/* Details Grid: Full Width Rows */}
+                        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-y-2 border-black">
+                            <MetaField label="Email Address" value={user.email} />
+                            <MetaField label="Access Role" value={user.role} />
+                            <MetaField label="Creation Date" value={new Date(user.createdAt).toLocaleDateString()} />
+                            <MetaField
+                                label="Last Presence"
+                                value={user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "NO_RECORD"}
+                            />
+                        </section>
+
+                        {/* Actions: Sleek & Bottom Aligned */}
+                        <footer className="mt-auto pt-16 flex space-x-8">
+                            <button
+                                onClick={() => navigate(`/admin/users/edit/${user.id}`)}
+                                className="bg-black text-white px-10 py-4 font-bold uppercase tracking-widest text-xs hover:bg-gray-800 transition-all"
+                            >
+                                Modify Record
+                            </button>
+                            <button
+                                onClick={() => navigate("/admin/users")}
+                                className="border-2 border-black px-10 py-4 font-bold uppercase tracking-widest text-xs hover:bg-black hover:text-white transition-all"
+                            >
+                                Back
+                            </button>
+                        </footer>
+                    </div>
+                )}
             </div>
         </div>
     );
 };
 
-export default UserDetail;  
+// Sleek Metadata Cell
+const MetaField = ({ label, value }) => (
+    <div className="p-10 border-b-2 last:border-b-0 md:border-b-0 md:border-r-2 md:last:border-r-0 border-black transition-colors hover:bg-gray-50 group">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-4 group-hover:text-black">{label}</p>
+        <p className="text-xl font-bold uppercase tracking-tighter truncate">{value}</p>
+    </div>
+);
+
+const LoadingScreen = () => (
+    <div className="h-screen flex items-center justify-center bg-white font-mono text-[10px] tracking-[1em] uppercase animate-pulse">
+        Accessing User Registry...
+    </div>
+);
+
+export default UserDetail;

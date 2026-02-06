@@ -30,9 +30,9 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Stores a file and returns the stored filename (NOT URL)
-     */
+
+     // Stores a file and returns the stored filename (NOT URL)
+
     public String store(MultipartFile file) {
         validateFile(file);
 
@@ -48,9 +48,7 @@ public class FileStorageService {
         return cleanFilename;
     }
 
-    /**
-     * Deletes a stored file safely
-     */
+
     public void delete(String filename) {
         if (filename == null || filename.isBlank()) return;
 
@@ -63,9 +61,6 @@ public class FileStorageService {
         }
     }
 
-    /**
-     * Builds a public URL from filename
-     */
     public String buildPublicUrl(String filename) {
         if (filename == null || filename.isBlank()) return null;
 
@@ -76,8 +71,6 @@ public class FileStorageService {
         return publicBasePath + "/" + filename;
     }
 
-
-    // ---------- helpers ----------
 
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {

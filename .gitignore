@@ -1,27 +1,46 @@
-# Backend - Maven/Java
-blog-application/target/
-*.class
-*.jar
-*.log
+# SECRETS
 .env
+.env.*
 *.env
 
-# Frontend - Node.js
-blog-frontend/node_modules/
-blog-frontend/dist/
-blog-frontend/package-lock.json
+# Backend
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+logs/
 
-# IDE
+# Frontend
+**/node_modules/
+**/dist/
+**/build/
+**/coverage/
+.docusaurus/
+
+# Docker & Local Data
+mysql-data/
+redis-data/
+prometheus-data/
+grafana-data/
+
+# User Uploads
+uploads/*
+!uploads/.gitkeep
+
+# IDE & OS
 .idea/
 *.iml
 .vscode/
-
-# OS
+.eclipse/
+.classpath
+.project
+.settings/
 .DS_Store
 Thumbs.db
 
-
-
+# --- 📄 Keep Documentation ---
+# Do NOT ignore these. You want these on GitHub!
 DOCKER_SETUP.md
 PERFORMANCE_OPTIMIZATIONS.md
-.env

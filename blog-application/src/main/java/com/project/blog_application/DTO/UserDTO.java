@@ -27,7 +27,7 @@ public class UserDTO implements Serializable {
         this.createdAt = user.getCreatedAt();
         this.bio = user.getBio();
 
-        // ✅ CENTRALIZED image URL handling
+        // CENTRALIZED image URL handling
         this.profilePicture =
                 fileStorageService.buildPublicUrl(user.getProfilePicture());
     }

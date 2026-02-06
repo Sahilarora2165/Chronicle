@@ -31,38 +31,31 @@ public class RedisConfig implements CachingConfigurer {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisConfig.class);
 
-    /**
-     * CRITICAL: This error handler prevents app crash when Redis is unavailable.
-     * Without this, any cache operation failure will kill the application.
-     *
-     * In production with Redis → caching works normally
-     * In production without Redis → app continues without caching (logs errors)
-     */
     @Bean
     @Override
     public CacheErrorHandler errorHandler() {
         return new CacheErrorHandler() {
             @Override
             public void handleCacheGetError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
-                logger.warn("⚠️ Redis GET failed for cache '{}' key '{}' - continuing without cache. Error: {}",
+                logger.warn("Redis GET failed for cache '{}' key '{}' - continuing without cache. Error: {}",
                         cache.getName(), key, exception.getMessage());
             }
 
             @Override
             public void handleCachePutError(RuntimeException exception, org.springframework.cache.Cache cache, Object key, Object value) {
-                logger.warn("⚠️ Redis PUT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
+                logger.warn("Redis PUT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
                         cache.getName(), key, exception.getMessage());
             }
 
             @Override
             public void handleCacheEvictError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
-                logger.warn("⚠️ Redis EVICT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
+                logger.warn("Redis EVICT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
                         cache.getName(), key, exception.getMessage());
             }
 
             @Override
             public void handleCacheClearError(RuntimeException exception, org.springframework.cache.Cache cache) {
-                logger.warn("⚠️ Redis CLEAR failed for cache '{}' - continuing without cache. Error: {}",
+                logger.warn("Redis CLEAR failed for cache '{}' - continuing without cache. Error: {}",
                         cache.getName(), exception.getMessage());
             }
         };

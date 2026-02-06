@@ -3,8 +3,8 @@ services:
     image: mysql:8.0
     container_name: blogify-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sahil1175}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-blog_db}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
     ports:
       - "3307:3306"
     volumes:
@@ -36,21 +36,22 @@ services:
     container_name: blogify-backend
     environment:
       - SPRING_PROFILES_ACTIVE=docker
-      - DB_URL=${DB_URL:-jdbc:mysql://mysql:3306/blog_db}
-      - DB_USERNAME=${DB_USERNAME:-root}
-      - DB_PASSWORD=${DB_PASSWORD:-sahil1175}
+      - DB_URL=${DB_URL}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     ports:
       - "8080:8080"
     volumes:
-      - uploads-data:/app/uploads
+      - ./uploads:/app/uploads
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
-
     networks:
       - blogify-network
     restart: unless-stopped
@@ -70,7 +71,6 @@ services:
     networks:
       - blogify-network
 
-
   prometheus:
     image: prom/prometheus:latest
     ports:
@@ -89,23 +89,20 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3001:3000"  # Using 3001 to avoid conflict with React dev server
-    volumes:
-      - grafana-data:/var/lib/grafana
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - "3001:3000"
     depends_on:
       - prometheus
+    volumes:
+      - grafana-data:/var/lib/grafana
     networks:
       - blogify-network
-volumes:
-  mysql-data:
-  redis-data:
-  uploads-data:
-  prometheus-data:
-  grafana-data:
 
 networks:
   blogify-network:
     driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:

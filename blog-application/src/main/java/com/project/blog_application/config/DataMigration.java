@@ -17,7 +17,7 @@ public class DataMigration {
         List<BlogPost> posts = blogPostRepository.findAll();
         for (BlogPost post : posts) {
             if (post.getImageUrl() != null && post.getImageUrl().startsWith("uploads/") && !post.getImageUrl().startsWith("/uploads/")) {
-                post.setImageUrl("/" + post.getImageUrl()); // Prepend / if missing
+                post.setImageUrl("/" + post.getImageUrl());
                 blogPostRepository.save(post);
             }
         }

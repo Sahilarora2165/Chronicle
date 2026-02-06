@@ -44,7 +44,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ Allow CORS properly
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) //Allow CORS properly
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -70,7 +70,7 @@ public class SecurityConfig {
                                 "/api/users/{id}",
                                 "/api/users/me",
                                 "/api/users/{id}/statistics",
-                                "/api/users/me/posts").hasAnyRole("USER", "ADMIN") // ✅ Restrict access to authenticated users
+                                "/api/users/me/posts").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(
                                 "/api/posts/{id}/update",
                                 "/api/posts/{id}/delete",
@@ -88,7 +88,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ Correctly configure CORS to allow frontend requests
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

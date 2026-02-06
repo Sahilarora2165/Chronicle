@@ -1,14 +1,23 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Suspense, lazy } from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom"; // 1. Added useLocation
+import { Suspense, lazy, useEffect } from "react"; // 2. Added useEffect
 import Sidebar from "./components/Sidebar";
 
-// Eager load public pages for better initial load experience
+// --- ADD THIS COMPONENT HERE ---
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
+// ------------------------------
+
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import HomePage from "./pages/HomePage";
 import PublicProfile from "./pages/PublicProfile";
 
-// Lazy load admin panel components for code splitting - reduces initial bundle size
+// Lazy loads...
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Users = lazy(() => import("./pages/Users"));
 const Posts = lazy(() => import("./pages/Posts"));
@@ -20,9 +29,6 @@ const EditPost = lazy(() => import("./pages/EditPost"));
 const CommentDetail = lazy(() => import("./pages/CommentDetail"));
 const EditComment = lazy(() => import("./pages/EditComment"));
 const RecentActivities = lazy(() => import("./pages/RecentActivities"));
-
-
-// Lazy load less frequently accessed pages
 const WriteBlog = lazy(() => import("./pages/WriteBlog"));
 const PostContent = lazy(() => import("./pages/PostContent"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -32,7 +38,6 @@ const Contact = lazy(() => import("./pages/Contact"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 
-// Loading fallback component
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-screen">
     <div className="text-center">
@@ -45,9 +50,11 @@ const LoadingFallback = () => (
 function App() {
   return (
     <Router>
+      {/* 3. PLACE IT HERE inside the Router */}
+      <ScrollToTop />
+
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
-          {/* Public Routes without Sidebar */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/" element={<HomePage />} />
@@ -57,11 +64,10 @@ function App() {
           <Route path="/update/:postId" element={<UpdatePost />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/privacy" element={<Privacy />} /> 
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/profile/:id" element={<PublicProfile />} />
-          
-          {/* Protected Admin Panel Routes with Sidebar */}
+
           <Route
             path="/admin/*"
             element={

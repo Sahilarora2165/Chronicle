@@ -2,20 +2,13 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../axios";
 
-/**
- * Dashboard component displaying statistics for users, posts, and comments, along with recent activities.
- * Requires a valid JWT token stored in localStorage for authenticated API calls.
- * 
- * Performance optimization: Uses consolidated /api/dashboard/stats endpoint instead of 4 separate API calls.
- * This reduces network overhead and improves page load time.
- */
 const Dashboard = () => {
-    const [stats, setStats] = useState([
-        { title: "Total Users", value: "Loading...", link: "/admin/users" },
-        { title: "Total Posts", value: "Loading...", link: "/admin/posts" },
-        { title: "Total Comments", value: "Loading...", link: "/admin/comments" },
-    ]);
-    const [recentActivities, setRecentActivities] = useState([]);
+    const [data, setData] = useState({
+        userCount: 0,
+        postCount: 0,
+        commentCount: 0,
+        recentActivities: []
+    });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
@@ -23,43 +16,17 @@ const Dashboard = () => {
 
     useEffect(() => {
         if (!token) {
-            setError("No authentication token found. Please log in.");
-            setLoading(false);
             navigate("/login");
             return;
         }
 
         const fetchDashboardData = async () => {
-            setLoading(true);
             try {
-                // Single API call instead of 4 separate calls - Performance optimization
                 const response = await api.get("/dashboard/stats");
-
-                const { userCount, postCount, commentCount, recentActivities: activities } = response.data;
-
-                setStats([
-                    { title: "Total Users", value: userCount.toLocaleString(), link: "/admin/users" },
-                    { title: "Total Posts", value: postCount.toLocaleString(), link: "/admin/posts" },
-                    { title: "Total Comments", value: commentCount.toLocaleString(), link: "/admin/comments" },
-                ]);
-                setRecentActivities(activities.slice(0, 5));
+                setData(response.data);
                 setError("");
             } catch (err) {
-                let errorMessage = "Failed to load dashboard data";
-                if (err.response) {
-                    errorMessage = `Error: ${err.response.status} - ${err.response.data.message || "Unauthorized or server error"}`;
-                    if (err.response.status === 401) {
-                        localStorage.removeItem("token");
-                        navigate("/login");
-                        errorMessage = "Session expired. Please log in again.";
-                    }
-                } else if (err.request) {
-                    errorMessage = "Network error. Please check your connection.";
-                } else {
-                    errorMessage = `Unexpected error: ${err.message}`;
-                }
-                setError(errorMessage);
-                console.error("Error fetching dashboard data:", err);
+                setError("CONNECTION_INTERRUPTED: SYNC FAILED");
             } finally {
                 setLoading(false);
             }
@@ -68,70 +35,98 @@ const Dashboard = () => {
         fetchDashboardData();
     }, [token, navigate]);
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-white">
-                <div className="text-center">
-                    <h1 className="text-4xl font-extrabold text-black mb-4 tracking-wide">DASHBOARD</h1>
-                    <p className="text-lg text-gray-400 animate-pulse">Loading dashboard data...</p>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <LoadingScreen />;
 
     return (
-        <div className="min-h-screen w-full bg-white p-8 flex flex-col">
-            <h1 className="text-4xl font-extrabold text-center text-black mb-8 tracking-wide uppercase">
-                Dashboard
-            </h1>
+        <div className="h-screen bg-white text-black font-sans p-6 md:p-16 flex flex-col">
+            <div className="max-w-6xl w-full mx-auto flex flex-col h-full">
 
-            {error && (
-                <p className="text-black text-center mb-6 bg-gray-200 p-3 rounded-lg shadow-md">
-                    {error}
-                </p>
-            )}
+                {/* Header: Clean & Minimal */}
+                <header className="flex justify-between items-baseline mb-16 shrink-0">
+                    <div>
+                        <h1 className="text-4xl font-black tracking-tighter uppercase italic">
+                            Chronicles
+                            <span className="text-sm not-italic font-mono text-gray-400 font-normal ml-3">v1.0.4</span>
+                        </h1>
+                    </div>
+                    <div className="font-mono text-[10px] uppercase tracking-widest text-gray-400 hidden sm:block">
+                        {new Date().toLocaleDateString()} // STATUS: OK
+                    </div>
+                </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                {stats.map((stat, index) => (
-                    <Link
-                        to={stat.link}
-                        key={index}
-                        className="bg-black text-white p-6 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
-                    >
-                        <h2 className="text-xl font-semibold mb-2 tracking-tight">{stat.title}</h2>
-                        <p className="text-4xl font-bold">{stat.value}</p>
-                    </Link>
-                ))}
-            </div>
+                {error && (
+                    <div className="border-2 border-red-600 text-red-600 p-4 mb-12 font-mono text-xs text-center font-bold uppercase shrink-0">
+                        {error}
+                    </div>
+                )}
 
-            <div className="flex-1 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-                <h2 className="text-2xl font-bold text-black mb-6 tracking-wide">Recent Activity</h2>
-                <div className="overflow-y-auto max-h-[calc(100vh-400px)] space-y-6">
-                    {recentActivities.length > 0 ? (
-                        recentActivities.map((activity, index) => (
-                            <div
-                                key={index}
-                                className="flex items-start p-4 bg-gray-50 rounded-lg shadow-sm hover:bg-gray-100 transition-colors duration-200"
-                            >
-                                <span className="inline-block w-3 h-3 mt-2 mr-4 rounded-full bg-black flex-shrink-0"></span>
-                                <div>
-                                    <p className="text-black font-medium">
-                                        <span className="font-semibold">{activity.type}:</span>{" "}
-                                        {activity.description}
+                {/* Stats Section: No Borders, Just Typography */}
+                <section className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-20 shrink-0">
+                    <StatCard label="User Base" value={data.userCount} link="/admin/users" />
+                    <StatCard label="Stories" value={data.postCount} link="/admin/posts" />
+                    <StatCard label="Feedback" value={data.commentCount} link="/admin/comments" />
+                </section>
+
+                {/* Registry Log: Contained and Scrollable */}
+                <section className="flex-1 min-h-0 flex flex-col max-w-4xl">
+                    <h2 className="text-xs font-mono uppercase tracking-[0.3em] text-gray-400 mb-8 border-b border-gray-100 pb-2 flex justify-between shrink-0">
+                        <span>Recent Registry Events</span>
+                        <span className="text-[9px] animate-pulse">● LIVE_FEED</span>
+                    </h2>
+
+                    <div className="relative flex-1 min-h-0">
+                        {/* Scrollable area */}
+                        <div className="h-full overflow-y-auto pr-4 custom-scrollbar">
+                            <div className="divide-y divide-gray-100">
+                                {data.recentActivities.length > 0 ? (
+                                    data.recentActivities.map((activity, index) => (
+                                        <div key={index} className="group flex py-4 font-mono text-xs items-center hover:bg-gray-50 transition-colors px-2">
+                                            <span className="text-gray-300 mr-6 w-16 tabular-nums">
+                                                {new Date(activity.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                            </span>
+                                            <span className="font-bold mr-4 w-24">[{activity.type.toUpperCase()}]</span>
+                                            <span className="flex-1 text-gray-600 group-hover:text-black truncate mr-4">
+                                                {activity.description}
+                                            </span>
+                                            <span className="opacity-0 group-hover:opacity-100 text-[10px] font-bold whitespace-nowrap">
+                                                VIEW ↗
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="py-10 text-gray-400 font-mono text-xs italic text-center uppercase tracking-widest">
+                                        // Empty Registry
                                     </p>
-                                    <span className="text-sm text-gray-500 block mt-1">
-                                        {new Date(activity.timestamp).toLocaleString()}
-                                    </span>
-                                </div>
+                                )}
                             </div>
-                        ))
-                    ) : (
-                        <p className="text-gray-600 text-center p-4">No recent activity.</p>
-                    )}
-                </div>
+                        </div>
+
+                        {/* Bottom Gradient for visual depth */}
+                        <div className="pointer-events-none absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-white to-transparent"></div>
+                    </div>
+                </section>
             </div>
         </div>
     );
 };
+
+const StatCard = ({ label, value, link }) => (
+    <Link to={link} className="group block">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 font-mono mb-2 group-hover:text-black transition-colors">
+            {label}
+        </p>
+        <p className="text-7xl font-black tracking-tighter group-hover:italic transition-all leading-none">
+            {value.toLocaleString()}
+        </p>
+    </Link>
+);
+
+const LoadingScreen = () => (
+    <div className="min-h-screen flex items-center justify-center bg-white font-mono">
+        <div className="text-center">
+            <p className="text-[10px] tracking-[0.5em] uppercase animate-pulse">Initializing Terminal...</p>
+        </div>
+    </div>
+);
 
 export default Dashboard;

@@ -8,45 +8,20 @@ const Users = () => {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const [usersPerPage] = useState(8); // Increased to show more users per page
+    const [usersPerPage] = useState(10);
     const navigate = useNavigate();
     const token = localStorage.getItem("token");
 
     useEffect(() => {
-        if (!token) {
-            setError("No authentication token found. Please log in.");
-            setLoading(false);
-            navigate("/login");
-            return;
-        }
-
+        if (!token) { navigate("/login"); return; }
         const fetchUsers = async () => {
-            setLoading(true);
             try {
                 const response = await api.get("/users");
                 setUsers(response.data);
-                setError("");
             } catch (err) {
-                let errorMessage = "Failed to load users";
-                if (err.response) {
-                    errorMessage = `Error: ${err.response.status} - ${err.response.data.message || "Unauthorized or server error"}`;
-                    if (err.response.status === 401) {
-                        localStorage.removeItem("token");
-                        navigate("/login");
-                        errorMessage = "Session expired. Please log in again.";
-                    }
-                } else if (err.request) {
-                    errorMessage = "Network error. Please check your connection.";
-                } else {
-                    errorMessage = `Unexpected error: ${err.message}`;
-                }
-                setError(errorMessage);
-                console.error("Error fetching users:", err);
-            } finally {
-                setLoading(false);
-            }
+                setError("SYSTEM_ERROR: FAILED TO FETCH USER REGISTRY");
+            } finally { setLoading(false); }
         };
-
         fetchUsers();
     }, [token, navigate]);
 
@@ -62,129 +37,122 @@ const Users = () => {
     const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
 
     const handleDelete = async (userId) => {
-        if (window.confirm("Are you sure you want to delete this user?")) {
+        if (window.confirm("Confirm deletion of user record?")) {
             try {
                 await api.delete(`/users/${userId}`);
                 setUsers(users.filter(user => user.id !== userId));
-                setError("");
             } catch (err) {
-                let errorMessage = "Failed to delete user";
-                if (err.response) {
-                    errorMessage = `Error: ${err.response.status} - ${err.response.data.message || "Unauthorized or server error"}`;
-                } else if (err.request) {
-                    errorMessage = "Network error. Please check your connection.";
-                } else {
-                    errorMessage = `Unexpected error: ${err.message}`;
-                }
-                setError(errorMessage);
-                console.error("Error deleting user:", err);
+                setError("ACTION_FAILED: DELETE_USER_REJECTED");
             }
         }
     };
 
-    const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-    if (loading) {
-        return (
-            <div className="h-screen flex items-center justify-center bg-gray-50">
-                <div className="  text-center">
-                    <div className="loading loading-spinner loading-lg text-gray-500"></div>
-                    <p className="text-gray-500 mt-2">Loading users...</p>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <LoadingScreen />;
 
     return (
-        <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col p-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900">User Management Hub</h1>
-                    <p className="text-md text-gray-600">Oversee your blog community</p>
-                </div>
-                <div className="w-1/3">
-                    <input
-                        type="text"
-                        placeholder="Search by username, email, or role..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full p-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm hover:shadow-md transition-all duration-200"
-                    />
-                </div>
-            </div>
+        <div className="min-h-screen bg-white text-black font-sans flex flex-col">
+            <div className="w-full px-6 md:px-12 py-8 flex flex-col h-screen">
 
-            {error && (
-                <p className="text-red-500 text-center mb-4">
-                    {error}
-                    <button
-                        onClick={() => fetchUsers()}
-                        className="ml-2 bg-red-500 text-white px-3 py-1 rounded-full hover:bg-red-600 transition-colors"
-                    >
-                        Retry
-                    </button>
-                </p>
-            )}
+                {/* Header: Full Width & Sleek */}
+                <header className="flex flex-col md:flex-row justify-between items-baseline mb-12 border-b-2 border-black pb-6">
+                    <div>
+                        <h1 className="text-5xl font-black tracking-tighter uppercase italic">Registry</h1>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-gray-400 mt-2">Member Directory // Chronicles v1.0.4</p>
+                    </div>
 
-            <div className="flex-1 overflow-auto">
-                <div className="space-y-4">
-                    {currentUsers.length > 0 ? (
-                        currentUsers.map(user => (
-                            <div
-                                key={user.id}
-                                className="bg-white p-4 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-between"
-                            >
-                                <div className="flex-1">
-                                    <Link to={`/admin/users/${user.id}`} className="text-gray-900 hover:text-blue-600">
-                                        <h3 className="text-lg font-semibold">{user.username}</h3>
-                                        <p className="text-gray-600 text-sm">{user.email}</p>
-                                        <p className="text-xs text-gray-500 mt-1">Role: {user.role}</p>
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Joined: {new Date(user.createdAt).toLocaleString()}
-                                        </p>
-                                    </Link>
+                    <div className="w-full md:w-96 mt-6 md:mt-0">
+                        <input
+                            type="text"
+                            placeholder="SEARCH_INDEX..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-gray-50 border-b border-black p-2 font-mono text-xs focus:outline-none focus:bg-gray-100 transition-colors"
+                        />
+                    </div>
+                </header>
+
+                {error && <div className="bg-black text-white p-4 mb-8 font-mono text-xs uppercase tracking-widest">{error}</div>}
+
+                {/* Users List: Full Width Table-Style */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-1 border-t border-gray-100">
+                        {currentUsers.length > 0 ? (
+                            currentUsers.map(user => (
+                                <div
+                                    key={user.id}
+                                    className="group flex flex-col md:flex-row items-start md:items-center justify-between py-6 px-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                                >
+                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                                        <Link to={`/admin/users/${user.id}`} className="hover:italic transition-all">
+                                            <p className="font-mono text-[10px] uppercase text-gray-400 mb-1">Username</p>
+                                            <h3 className="text-lg font-bold tracking-tight uppercase">{user.username}</h3>
+                                        </Link>
+                                        <div>
+                                            <p className="font-mono text-[10px] uppercase text-gray-400 mb-1">Email</p>
+                                            <p className="text-sm text-gray-600">{user.email}</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-mono text-[10px] uppercase text-gray-400 mb-1">Permissions</p>
+                                            <span className="text-xs font-bold font-mono px-2 py-0.5 border border-black uppercase">
+                                                {user.role}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex space-x-6 mt-6 md:mt-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => navigate(`/admin/users/edit/${user.id}`)}
+                                            className="text-[10px] font-black uppercase tracking-widest border-b-2 border-black hover:bg-black hover:text-white px-2 py-1 transition-all"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(user.id)}
+                                            className="text-[10px] font-black uppercase tracking-widest border-b-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white px-2 py-1 transition-all"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex space-x-3">
-                                    <button
-                                        onClick={() => navigate(`/admin/users/edit/${user.id}`)}
-                                        className="relative bg-gradient-to-r from-gray-200 to-white text-black px-2 py-0.5 rounded-full font-semibold text-xs uppercase tracking-wider shadow-md hover:shadow-xl hover:bg-gradient-to-r hover:from-blue-800 hover:to-blue-600 hover:text-white transform hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-300"
-                                    >
-                                        <span className="relative z-10">Edit</span>
-                                        <div className="absolute inset-0 rounded-full bg-blue-800 opacity-0 hover:opacity-10 transition-opacity duration-300"></div>
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(user.id)}
-                                        className="relative bg-gradient-to-r from-gray-200 to-white text-black px-2 py-0.5 rounded-full font-semibold text-xs uppercase tracking-wider shadow-md hover:shadow-xl hover:bg-gradient-to-r hover:from-red-800 hover:to-red-600 hover:text-white transform hover:-translate-y-1 transition-all duration-300 ease-in-out border border-gray-300"
-                                    >
-                                        <span className="relative z-10">Delete</span>
-                                        <div className="absolute inset-0 rounded-full bg-red-800 opacity-0 hover:opacity-10 transition-opacity duration-300"></div>
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <p className="text-gray-600 text-center">No users found.</p>
-                    )}
+                            ))
+                        ) : (
+                            <p className="py-20 text-center font-mono text-xs text-gray-400 uppercase tracking-widest">// No records matching search criteria</p>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-center space-x-2">
-                    {Array.from({ length: totalPages }, (_, i) => (
-                        <button
-                            key={i + 1}
-                            onClick={() => paginate(i + 1)}
-                            className={`w-8 h-8 rounded-full ${currentPage === i + 1
-                                ? "bg-blue-500 text-white"
-                                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                } text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200`}
-                        >
-                            {i + 1}
-                        </button>
-                    ))}
-                </div>
-            )}
+                {/* Pagination: Minimalist Footer */}
+                {totalPages > 1 && (
+                    <footer className="mt-8 pt-6 border-t border-black flex justify-between items-center shrink-0">
+                        <p className="font-mono text-[10px] text-gray-400 uppercase tracking-widest">
+                            Page {currentPage} of {totalPages}
+                        </p>
+                        <div className="flex space-x-4">
+                            {Array.from({ length: totalPages }, (_, i) => (
+                                <button
+                                    key={i + 1}
+                                    onClick={() => setCurrentPage(i + 1)}
+                                    className={`font-mono text-xs p-2 transition-all ${
+                                        currentPage === i + 1
+                                        ? "font-black border-b-2 border-black"
+                                        : "text-gray-400 hover:text-black"
+                                    }`}
+                                >
+                                    {String(i + 1).padStart(2, '0')}
+                                </button>
+                            ))}
+                        </div>
+                    </footer>
+                )}
+            </div>
         </div>
     );
 };
+
+const LoadingScreen = () => (
+    <div className="h-screen flex items-center justify-center bg-white font-mono uppercase text-[10px] tracking-[1em] animate-pulse">
+        Establishing Registry Connection...
+    </div>
+);
 
 export default Users;

@@ -2,11 +2,6 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../axios";
 
-/**
- * Edit user page for the admin dashboard, allowing updates with a success redirect.
- * Features a minimalist, aesthetic, and centered UI design.
- * Requires a valid JWT token stored in localStorage for authenticated API calls.
- */
 const EditUser = () => {
     const { id } = useParams();
     const [user, setUser] = useState({ username: "", email: "", bio: "", profilePicture: null });
@@ -16,40 +11,19 @@ const EditUser = () => {
     const token = localStorage.getItem("token");
 
     useEffect(() => {
-        if (!token) {
-            setError("No authentication token found. Please log in.");
-            setLoading(false);
-            navigate("/login");
-            return;
-        }
+        if (!token) { navigate("/login"); return; }
 
         const fetchUser = async () => {
-            setLoading(true);
             try {
                 const response = await api.get(`/users/${id}`);
                 setUser({
                     username: response.data.username,
                     email: response.data.email,
                     bio: response.data.bio || "",
-                    profilePicture: null, // Reset file input
+                    profilePicture: null,
                 });
-                setError("");
             } catch (err) {
-                let errorMessage = "Failed to load user";
-                if (err.response) {
-                    errorMessage = `Error: ${err.response.status} - ${err.response.data.message || "Unauthorized or server error"}`;
-                    if (err.response.status === 401) {
-                        localStorage.removeItem("token");
-                        navigate("/login");
-                        errorMessage = "Session expired. Please log in again.";
-                    }
-                } else if (err.request) {
-                    errorMessage = "Network error. Please check your connection.";
-                } else {
-                    errorMessage = `Unexpected error: ${err.message}`;
-                }
-                setError(errorMessage);
-                console.error("Error fetching user:", err);
+                setError("Unable to retrieve user records.");
             } finally {
                 setLoading(false);
             }
@@ -60,131 +34,137 @@ const EditUser = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         const formData = new FormData();
         formData.append("username", user.username);
         formData.append("email", user.email);
-        formData.append("bio", user.bio || ""); // Optional bio field
+        formData.append("bio", user.bio || "");
         if (user.profilePicture instanceof File) {
-            formData.append("profilePicture", user.profilePicture); // Append file only if updated
+            formData.append("profilePicture", user.profilePicture);
         }
 
         try {
-            const response = await api.put(`/users/${id}`, formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data", // ✅ Required for form-data
-                },
+            await api.put(`/users/${id}`, formData, {
+                headers: { "Content-Type": "multipart/form-data" },
             });
-
-            console.log("User updated:", response.data);
-            navigate(`/admin/users/${id}?success=User updated successfully!`);
-            setError("");
+            navigate(`/admin/users/${id}`);
         } catch (err) {
-            console.error("Error updating user:", err.response ? err.response.data : err.message);
-            let errorMessage = "Failed to update user";
-            if (err.response) {
-                errorMessage = `Error: ${err.response.status} - ${err.response.data.message || "Unauthorized or server error"}`;
-            } else if (err.request) {
-                errorMessage = "Network error. Please check your connection.";
-            } else {
-                errorMessage = `Unexpected error: ${err.message}`;
-            }
-            setError(errorMessage);
+            setError("Update failed. Please try again.");
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                <div className="text-center">
-                    <h1 className="text-4xl font-extrabold text-gray-900 mb-4">Edit User</h1>
-                    <p className="text-lg text-gray-600 mb-4">Update user details effortlessly</p>
-                    <div className="loading loading-spinner loading-lg text-gray-500"></div>
-                    <p className="text-gray-500 mt-2">Loading user data...</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                <div className="text-center">
-                    <p className="text-red-500 mb-4">{error}</p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition-colors"
-                    >
-                        Retry
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <LoadingScreen />;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
-            <div className="w-full max-w-2xl">
-                <h1 className="text-4xl font-extrabold text-gray-900 text-center mb-8">Edit User Profile</h1>
-                <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-md">
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-gray-700 mb-2">Username</label>
-                            <input
-                                type="text"
-                                value={user.username}
-                                onChange={(e) => setUser({ ...user, username: e.target.value })}
-                                className="w-full p-4 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
-                                required
-                            />
+        <div className="min-h-screen bg-[#fafafa] text-slate-900 font-sans selection:bg-blue-100">
+            {/* Full Width Container */}
+            <div className="w-full px-8 md:px-16 py-12">
+
+                {/* Minimal Header */}
+                <header className="mb-16 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-light tracking-tight text-slate-800">
+                            Edit Profile <span className="text-slate-300 mx-2">/</span>
+                            <span className="font-medium text-blue-600">{user.username}</span>
+                        </h1>
+                        <p className="text-sm text-slate-400 mt-1 font-light tracking-wide">Update system identity and permissions</p>
+                    </div>
+                    <button
+                        onClick={() => navigate(`/admin/users/${id}`)}
+                        className="text-xs font-semibold uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors"
+                    >
+                        Discard Changes
+                    </button>
+                </header>
+
+                {error && (
+                    <div className="bg-red-50 text-red-500 p-4 mb-8 text-sm rounded-lg border border-red-100 italic text-center">
+                        {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="w-full">
+                    {/* Sleek Form Layout */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-12">
+
+                        {/* Section: Basic Info */}
+                        <div className="space-y-8">
+                            <div>
+                                <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Account Username</label>
+                                <input
+                                    type="text"
+                                    value={user.username}
+                                    onChange={(e) => setUser({ ...user, username: e.target.value })}
+                                    className="w-full bg-white border-b border-slate-200 py-3 text-lg focus:border-blue-500 outline-none transition-all placeholder:text-slate-200"
+                                    placeholder="Enter username"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Email Address</label>
+                                <input
+                                    type="email"
+                                    value={user.email}
+                                    onChange={(e) => setUser({ ...user, email: e.target.value })}
+                                    className="w-full bg-white border-b border-slate-200 py-3 text-lg focus:border-blue-500 outline-none transition-all placeholder:text-slate-200"
+                                    placeholder="email@example.com"
+                                    required
+                                />
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-gray-700 mb-2">Email</label>
-                            <input
-                                type="email"
-                                value={user.email}
-                                onChange={(e) => setUser({ ...user, email: e.target.value })}
-                                className="w-full p-4 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-gray-700 mb-2">Bio</label>
-                            <textarea
-                                value={user.bio}
-                                onChange={(e) => setUser({ ...user, bio: e.target.value })}
-                                className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-sm hover:shadow-md transition-all duration-200"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-gray-700 mb-2">Profile Picture</label>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => setUser({ ...user, profilePicture: e.target.files[0] })}
-                                className="w-full p-4 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500"
-                            />
+
+                        {/* Section: Media & Bio */}
+                        <div className="space-y-8">
+                            <div>
+                                <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Biographical Note</label>
+                                <textarea
+                                    value={user.bio}
+                                    onChange={(e) => setUser({ ...user, bio: e.target.value })}
+                                    className="w-full bg-white border border-slate-100 rounded-xl p-4 text-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 outline-none transition-all min-h-[120px] shadow-sm"
+                                    placeholder="Describe the user's role or background..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Identity Avatar</label>
+                                <div className="flex items-center space-x-4">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setUser({ ...user, profilePicture: e.target.files[0] })}
+                                        className="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div className="mt-6 flex space-x-4 justify-center">
+
+                    {/* Submit Bar */}
+                    <footer className="mt-20 pt-8 border-t border-slate-100 flex items-center space-x-6">
                         <button
                             type="submit"
-                            className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors duration-200"
+                            className="bg-slate-900 text-white px-10 py-3.5 rounded-full font-medium text-sm hover:bg-blue-600 hover:shadow-lg hover:shadow-blue-200 transition-all"
                         >
                             Save Changes
                         </button>
                         <button
-                            onClick={() => navigate(`/admin/users/${id}`)}
                             type="button"
-                            className="bg-gray-500 text-white px-4 py-2 rounded-full hover:bg-gray-600 transition-colors duration-200"
+                            onClick={() => navigate(`/admin/users/${id}`)}
+                            className="text-sm font-medium text-slate-400 hover:text-slate-900 transition-colors"
                         >
                             Cancel
                         </button>
-                    </div>
+                    </footer>
                 </form>
             </div>
         </div>
     );
 };
+
+const LoadingScreen = () => (
+    <div className="h-screen flex items-center justify-center bg-[#fafafa]">
+        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+);
 
 export default EditUser;
