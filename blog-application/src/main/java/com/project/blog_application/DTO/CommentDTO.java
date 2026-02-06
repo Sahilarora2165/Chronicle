@@ -12,9 +12,9 @@ public class CommentDTO implements Serializable {
     private Long id;
     private String content;
     private Long userId;
-    private String username; // Instead of the full User object
+    private String username;
     private Long blogPostId;
-    private String blogPostTitle; // Instead of the full BlogPost object
+    private String blogPostTitle;
     private LocalDateTime createdAt;
 
     // Default constructor

@@ -54,7 +54,7 @@ public class BlogPostController {
         this.blogMetrics = blogMetrics;
     }
 
-    // ✅ Returns cached JSON string directly
+    // Returns cached JSON string directly
     @GetMapping
     public ResponseEntity<String> getAllPosts(
             @RequestParam(defaultValue = "0") int page,
@@ -76,7 +76,7 @@ public class BlogPostController {
         }
     }
 
-    // ✅ Returns deserialized DTO from cached JSON
+    // Returns deserialized DTO from cached JSON
     @GetMapping("/{id}")
     public ResponseEntity<BlogPostDTO> getPostById(@PathVariable Long id) {
         try {

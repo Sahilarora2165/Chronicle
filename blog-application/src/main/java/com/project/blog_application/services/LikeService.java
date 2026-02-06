@@ -29,15 +29,7 @@ public class LikeService {
         this.blogPostRepository = blogPostRepository;
     }
 
-    /**
-     * Toggles like status for a specific user.
-     * If the user has already liked the post, it will unlike it.
-     * If the user hasn't liked the post yet, it will add a new like.
-     * 
-     * @param userId The ID of the user liking/unliking the post
-     * @param blogPostId The ID of the blog post to like/unlike
-     * @return A message indicating the result of the operation
-     */
+
     @Transactional
     public String toggleLike(Long userId, Long blogPostId) {
         Optional<User> userOptional = userRepository.findById(userId);
@@ -67,30 +59,17 @@ public class LikeService {
         throw new RuntimeException("User or BlogPost not found for userId=" + userId + ", blogPostId=" + blogPostId);
     }
     
-    /**
-     * Get the number of likes for a blog post.
-     */
+
     public Long getLikeCount(Long blogPostId) {
         return likeRepository.countByBlogPostId(blogPostId);
     }
     
-    /**
-     * Check if a specific user has liked a blog post.
-     * 
-     * @param userId The ID of the user
-     * @param blogPostId The ID of the blog post
-     * @return true if the user has liked the post, false otherwise
-     */
+
     public boolean hasUserLiked(Long userId, Long blogPostId) {
         return likeRepository.existsByBlogPostIdAndUserId(blogPostId, userId);
     }
     
-    /**
-     * Get all blog posts liked by a specific user.
-     * 
-     * @param userId The ID of the user
-     * @return List of blog posts liked by the user
-     */
+
     public List<BlogPost> getLikedBlogPosts(Long userId) {
         Optional<User> userOptional = userRepository.findById(userId);
         

@@ -7,11 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * Service for providing consolidated dashboard statistics.
- * This service combines data from AdminStatsService and ActivityService
- * into a single cached response, reducing API calls from 4 to 1.
- */
+
 @Service
 public class DashboardService {
 

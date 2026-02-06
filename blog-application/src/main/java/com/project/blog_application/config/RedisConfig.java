@@ -37,25 +37,25 @@ public class RedisConfig implements CachingConfigurer {
         return new CacheErrorHandler() {
             @Override
             public void handleCacheGetError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
-                logger.warn("⚠️ Redis GET failed for cache '{}' key '{}' - continuing without cache. Error: {}",
+                logger.warn("Redis GET failed for cache '{}' key '{}' - continuing without cache. Error: {}",
                         cache.getName(), key, exception.getMessage());
             }
 
             @Override
             public void handleCachePutError(RuntimeException exception, org.springframework.cache.Cache cache, Object key, Object value) {
-                logger.warn("⚠️ Redis PUT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
+                logger.warn("Redis PUT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
                         cache.getName(), key, exception.getMessage());
             }
 
             @Override
             public void handleCacheEvictError(RuntimeException exception, org.springframework.cache.Cache cache, Object key) {
-                logger.warn("⚠️ Redis EVICT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
+                logger.warn("Redis EVICT failed for cache '{}' key '{}' - continuing without cache. Error: {}",
                         cache.getName(), key, exception.getMessage());
             }
 
             @Override
             public void handleCacheClearError(RuntimeException exception, org.springframework.cache.Cache cache) {
-                logger.warn("⚠️ Redis CLEAR failed for cache '{}' - continuing without cache. Error: {}",
+                logger.warn("Redis CLEAR failed for cache '{}' - continuing without cache. Error: {}",
                         cache.getName(), exception.getMessage());
             }
         };

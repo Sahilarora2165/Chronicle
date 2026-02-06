@@ -22,11 +22,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Service class for managing user-related operations such as registration,
- * authentication,
- * and CRUD operations. Integrates with JwtUtil for token generation.
- */
 @Service
 @Transactional
 public class UserService {
@@ -84,11 +79,7 @@ public class UserService {
         return savedUser;
     }
 
-    /**
-     * Retrieves all users from the database.
-     * 
-     * @return A list of all User entities.
-     */
+
     public List<User> getAllUsers() {
         logger.debug("Fetching all users");
         List<User> users = userRepository.findAll();
@@ -96,36 +87,19 @@ public class UserService {
         return users;
     }
 
-    /**
-     * Retrieves all users from the database with pagination.
-     * 
-     * @param pageable Pagination and sorting information.
-     * @return A page of User entities.
-     */
     public Page<User> getAllUsers(PageRequest pageable) {
         logger.debug("Fetching all users with pagination");
         return userRepository.findAll(pageable);
     }
 
-    /**
-     * Retrieves all posts for a specific user.
-     * 
-     * @param userId The ID of the user.
-     * @return List of blog posts associated with the user.
-     */
+
     public List<BlogPost> getPostsByUserId(Long userId) {
         User user = getUserById(userId); // Ensure user exists
         logger.debug("Fetching posts for user ID: {}", userId);
         return user.getBlogPosts(); // Assuming BlogPost has a User relationship (e.g., @ManyToOne)
     }
 
-    /**
-     * Registers a new user with default USER role, restricting ADMIN assignment.
-     * 
-     * @param user The User entity to register.
-     * @return The saved User entity.
-     * @throws RuntimeException if ADMIN role is attempted without manual override.
-     */
+
     public User registerUser(User user, MultipartFile profilePicture) {
         logger.info("Registering default user: {}", user.getUsername());
         if (user.getRole() != null && user.getRole() == Role.ADMIN) {
@@ -134,14 +108,7 @@ public class UserService {
         return registerUser(user, false, profilePicture); // Default to USER role
     }
 
-    /**
-     * Authenticates a user and generates a JWT token if credentials are valid.
-     * 
-     * @param username The username of the user attempting to log in.
-     * @param password The plain-text password to verify.
-     * @return A JWT token if authentication succeeds.
-     * @throws RuntimeException if credentials are invalid.
-     */
+
     public String authenticateUser(String username, String password) {
         logger.info("Attempting to authenticate user: {}", username);
         User user = userRepository.findByUsername(username)
@@ -159,13 +126,6 @@ public class UserService {
         throw new RuntimeException("Invalid credentials");
     }
 
-    /**
-     * Retrieves a user by their ID.
-     * 
-     * @param id The ID of the user to fetch.
-     * @return The User entity.
-     * @throws RuntimeException if no user is found with the given ID.
-     */
     public User getUserById(Long id) {
         logger.debug("Fetching user by ID: {}", id);
         return userRepository.findById(id)
@@ -175,13 +135,7 @@ public class UserService {
                 });
     }
 
-    /**
-     * Retrieves a user by their username.
-     * 
-     * @param username The username of the user to fetch.
-     * @return The User entity.
-     * @throws RuntimeException if no user is found with the given username.
-     */
+
     public User getUserByUsername(String username) {
         logger.debug("Fetching user by username: {}", username);
         return userRepository.findByUsername(username)
@@ -191,13 +145,7 @@ public class UserService {
                 });
     }
 
-    /**
-     * Updates an existing user's details.
-     * 
-     * @param id          The ID of the user to update.
-     * @param updatedUser The User entity with updated details.
-     * @return The updated User entity.
-     */
+
     public User updateUser(Long id, User updatedUser, MultipartFile profilePicture) {
         logger.info("Updating user with ID: {}, new username: {}", id, updatedUser.getUsername());
         User existingUser = getUserById(id);
@@ -215,7 +163,7 @@ public class UserService {
             existingUser.setRole(updatedUser.getRole());
         }
 
-        // ✅ Handle profile picture upload
+        // Handle profile picture upload
         if (profilePicture != null && !profilePicture.isEmpty()) {
             String profilePicturePath = fileStorageService.store(profilePicture);
 
@@ -227,11 +175,7 @@ public class UserService {
         return savedUser;
     }
 
-    /**
-     * Deletes a user by their ID.
-     * 
-     * @param id The ID of the user to delete.
-     */
+
     public void deleteUser(Long id) {
         logger.info("Deleting user with ID: {}", id);
         User existingUser = getUserById(id);

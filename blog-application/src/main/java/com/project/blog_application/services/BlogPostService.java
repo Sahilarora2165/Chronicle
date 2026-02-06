@@ -50,7 +50,7 @@ public class BlogPostService {
     // Cache JSON string for paginated posts
     @Cacheable(value = "blogPostsPageJson", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     public String getAllBlogPostsJson(Pageable pageable) throws JsonProcessingException {
-        logger.info("🔴 CACHE MISS - Fetching paginated posts from DB (page: {}, size: {})",
+        logger.info("CACHE MISS - Fetching paginated posts from DB (page: {}, size: {})",
                 pageable.getPageNumber(), pageable.getPageSize());
         blogMetrics.incrementCacheMiss();
 
